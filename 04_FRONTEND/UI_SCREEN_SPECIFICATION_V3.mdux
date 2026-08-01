@@ -1,0 +1,39 @@
+# UI/UX Screen Specification V3
+
+## Purpose
+Ensure responsive, intuitive, and visually stunning mobile interfaces with automatic text wrapping and robust accessibility standards.
+
+## Scope
+- All Flutter screens, navigation flows, popups, and micro-interaction animations.
+
+## SSOT
+- `HEALTH IS ALL/04_FRONTEND/UI_SCREEN_SPECIFICATION.mdux`
+
+## Definitions
+- **Responsive Fluidity:** Layout adaptation across various mobile screen dimensions without text truncation.
+
+## Runtime
+- Flutter rendering engine on mobile client devices.
+
+## Rules
+1. Auto-line wrapping must be enabled on all text components to prevent clipping.
+2. Primary action buttons (copy, download, confirm) must be clearly marked and easily accessible on mobile viewports.
+
+## State
+- `UIViewState`: LOADING | LOADED | ERROR | EMPTY
+
+## Event
+- `Event:ScreenOrientationChanged`: Triggers layout recalculation.
+
+## Example
+- Rendering a complex nutrition analytics graph with clean tooltips and zero text overflow.
+
+## Exception
+- Extreme screen aspect ratios fall back to scrollable single-column container layouts.
+
+## Related Documents
+- `HEALTH IS ALL/04_FRONTEND/UI_SCREEN_SPECIFICATION_V2.mdux`
+- `HEALTH IS ALL/lib/app_theme.dart`
+
+## Change History
+- v3.0.0 (2026-07-31): Upgraded responsive wrapping and mobile touch targets.

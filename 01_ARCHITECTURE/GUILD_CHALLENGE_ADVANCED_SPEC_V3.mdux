@@ -1,0 +1,39 @@
+# Guild Challenge Advanced Specification V3
+
+## Purpose
+Define cooperative multiplayer health and fitness challenges, team synergy multipliers, and reward distributions.
+
+## Scope
+- Guild matchmaking, shared objective tracking, and collective milestone calculations.
+
+## SSOT
+- `HEALTH IS ALL/01_ARCHITECTURE/GUILD_CHALLENGE_SPEC.mdux`
+
+## Definitions
+- **Guild Synergy:** A cumulative bonus applied when all guild members complete their daily health routines.
+
+## Runtime
+- Backend cron jobs and real-time WebSocket event dispatchers.
+
+## Rules
+1. Individual health data privacy must be strictly preserved; only aggregated team scores are displayed publicly.
+2. Challenge difficulties dynamically scale based on average member activity levels.
+
+## State
+- `ChallengeState`: RECRUITING | ACTIVE | EVALUATING | REWARDED
+
+## Event
+- `Event:GuildMilestoneReached`: Triggers bonus reward distribution to all active members.
+
+## Example
+- Guild members collectively achieving 100,000 total steps unlock a legendary spirit evolution catalyst.
+
+## Exception
+- Inactive members exceeding 7 days are automatically excluded from active synergy calculations.
+
+## Related Documents
+- `HEALTH IS ALL/03_BACKEND/guild_challenge_engine.py`
+- `HEALTH IS ALL/lib/guild_challenge_widget.dart`
+
+## Change History
+- v3.0.0 (2026-07-31): Integrated V5 dynamic scaling and privacy controls.

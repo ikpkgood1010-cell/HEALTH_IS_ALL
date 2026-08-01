@@ -1,0 +1,42 @@
+# DYNAMIC_NUTRITION_UI_SPEC_V2
+
+## Purpose
+엄격한 식단 관리(무알코올, 무설탕, 무밀가루, 무튀김, 찜 요리 선호 등)를 실천하는 사용자가 직관적이고 편리하게 식단을 기록하고 시각적 피드백을 받을 수 있는 모바일 UI/UX 사양을 정의합니다.
+
+## Scope
+- 식단 기록 화면, 영양 분석 대시보드, 찜 요리 기록 간편 위젯
+
+## SSOT
+- 식단 트래킹 UI 및 레이아웃 규칙의 단일 진실 공급원(SSOT)
+
+## Definitions
+- **Clean Meal Indicator**: 설탕, 밀가루, 튀김류 배제 여부를 직관적으로 보여주는 뱃지 시스템
+- **Auto-Wrap Layout**: 모바일 화면에서 글자가 잘리지 않도록 자동 줄바꿈이 강제 적용되는 레이아웃
+
+## Runtime
+- 사용자가 식단 탭에 진입하거나 새로운 식단을 등록할 때 실시간 렌더링
+
+## Rules
+1. 모바일 환경에서 복사 버튼 및 입력 필드가 잘리지 않도록 자동 줄바꿈(Auto-wrap)을 기본 적용합니다.
+2. 이용자 친화적이고 호감 가는 파스텔톤 컬러와 직관적인 아이콘을 사용합니다.
+3. 터치 영역을 최적화하여 한 손으로도 간편하게 기록할 수 있도록 구성합니다.
+
+## State
+- `ui_state`: ready
+- `input_mode`: quick_log
+
+## Event
+- `EVENT_MEAL_LOGGED`: 식단 등록 완료 시 아이콘 애니메이션 재생
+
+## Example
+- "돼지고기 목살 야채찜" 등록 시 찜 요리 카테고리 자동 분류 및 클린 식단 점수 +10점 부여
+
+## Exception
+- 네트워크 불안정 시 로컬 저장소에 임시 저장 후 동기화 상태바 표시
+
+## Related Documents
+- `04_FRONTEND/DYNAMIC_NUTRITION_UI_SPEC.mdux`
+- `lib/diet_screen.dart`
+
+## Change History
+- **v2.0 (2026-07-31)**: 클린 식단 맞춤형 UI 컴포넌트 추가 및 자동 줄바꿈 강제 적용

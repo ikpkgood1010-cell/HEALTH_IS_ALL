@@ -1,0 +1,43 @@
+# ECONOMY_BALANCE_MASTER_SPEC_V2
+
+## Purpose
+건강 활동 수행과 게임 내 재화(골드, 경험치, 정령 정수) 간의 밸런스 규격을 정의한다.
+
+## Scope
+운동 소모 칼로리 및 식단 달성도에 비례하는 보상 지급 공식 및 일일 획득 상한선(Anti-Grind)을 관리한다.
+
+## SSOT
+본 문서는 게임 재화 및 보상 밸런스의 SSOT 문서이다.
+
+## Definitions
+* **Anti-Grind Cap**: 과도한 운동이나 허위 기록으로 인한 밸런스 파괴를 막기 위한 일일 최대 경험치/골드 제한 시스템.
+
+## Runtime
+백엔드 보상 연산 모듈 및 DB 트랜잭션 수치 제어에 적용된다.
+
+## Rules
+1. 모든 게임 재화 보상은 실제 사용자의 건강 행동(운동/식단/수면)에 정비례하여 지급한다.
+2. 현금 결제로 직접적인 경험치나 인게임 능력치를 구매하는 Pay-to-Win 요소는 엄격히 금지한다.
+
+## State
+* `NORMAL_REWARD`: 일반 보상 지급 상태
+* `CAP_REACHED`: 일일 보상 상한 도달 상태
+
+## Event
+* `CLAIM_HEALTH_REWARD`: 건강 활동 인증 완료 시 보상 청구.
+* `REWARD_CAP_EXCEEDED`: 상한 초과 시 소프트 경고 발송.
+
+## Example
+100kcal 소모 시 50 Gold 및 100 EXP 지급. 일일 최대 운동 경험치 상한은 2,500 EXP.
+
+## Exception
+오프라인 동기화로 일괄 입력 시 타임스탬프 중복 검사를 거쳐 유효한 시간대 데이터만 개별 인정한다.
+
+## Related Documents
+* `HEALTH IS ALL/03_GAME_SYSTEM/ANTI_GRIND_POLICY.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V1 | 2026-07-01 | Game Designer | 기본 보상 수치 산정 기준 마련 |
+| V2 | 2026-07-31 | Economy Lead | 정밀 소모 칼로리 연동 스케일링 보상 및 Anti-Grind 캡 구체화 |

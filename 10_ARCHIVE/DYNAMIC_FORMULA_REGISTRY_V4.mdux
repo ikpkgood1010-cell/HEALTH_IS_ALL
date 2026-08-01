@@ -1,0 +1,43 @@
+# DYNAMIC_FORMULA_REGISTRY_V4
+
+## Purpose
+사용자가 매번 동일한 수치와 보상에 지루함을 느끼지 않도록, 운동 강도, 식단 준수율, 수면 상태, 연속 달성 일수(Streak) 등의 다양한 변수를 실시간으로 조합하여 매번 역동적인 수치와 보상을 산출하는 계산식 규칙을 정의합니다.
+
+## Scope
+- 백엔드 엔진(`dynamic_health_engine_v4.py`) 및 프론트엔드 실시간 계산 반영 영역 전체
+- 건강 데이터(칼로리, 심박수)와 RPG 요소(경험치, 정령 성장의 지표)의 상호 연동 공식
+
+## SSOT
+- 이 문서는 'HEALTH IS ALL' 프로젝트 내 모든 동적 계산식 및 변수 가중치의 단일 진실 공급원(SSOT)입니다.
+
+## Definitions
+- **Multi-Variable Weight (MVW)**: 사용자 상태(피로도, 식단 성취도)에 따라 실시간으로 변동되는 가중치 계수
+- **Entropy Factor (EF)**: 단조로움을 방지하기 위한 미세 확률적 변동치 (-5% ~ +5%)
+
+## Runtime
+- 앱 실행 시 및 운동/식단 데이터 동기화 완료 직후 실시간 계산 수행
+
+## Rules
+1. 계산식은 단순 고정값을 지양하고 최소 3개 이상의 변수를 곱셈/나눗셈 구조로 복합 적용합니다.
+2. 단, 오버플로 또는 계산 오류 위험이 발견될 경우 즉시 한 단계 간결한 예비 공식으로 자동 전환(Fallback)됩니다.
+3. 게임 요소가 건강 증진 목적을 압도하지 않도록 보상 상한선을 설정합니다.
+
+## State
+- `formula_version`: v4.0
+- `entropy_active`: true
+
+## Event
+- `EVENT_CALCULATION_TRIGGERED`: 사용자의 운동 완료 또는 식단 입력 시 발생
+
+## Example
+- 기본 경험치 산출 공식: $BaseEXP = (Duration \times Intensity) \times (1 + StreakBonus) \times EF$
+
+## Exception
+- 입력값이 누락되거나 비정상적인 심박수 데이터가 들어온 경우 기본값(Default Weight = 1.0)으로 처리 후 로그 기록
+
+## Related Documents
+- `01_ARCHITECTURE/FORMULA_REGISTRY.mdux`
+- `03_BACKEND/dynamic_health_engine_v4.py`
+
+## Change History
+- **v4.0 (2026-07-31)**: 다변화된 엔트로피 팩터 및 복합 가중치 공식 도입

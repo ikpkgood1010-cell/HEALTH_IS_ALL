@@ -1,0 +1,39 @@
+# Unified Engine V5 Specification
+
+## Purpose
+Integrate health, exercise, nutrition, and progression calculation engines into a unified, high-performance modular backend architecture.
+
+## Scope
+- All backend calculation logic, error handling standards, and state synchronization policies.
+
+## SSOT
+- `HEALTH IS ALL/03_BACKEND/ENGINE_OVERVIEW.mdux`
+
+## Definitions
+- **Unified Engine:** A decoupled micro-kernel structure managing health metrics and game progression concurrently.
+
+## Runtime
+- Python 3.11+ asynchronous runtime environment.
+
+## Rules
+1. Engines must not directly modify database states without passing through the transactional boundary policy.
+2. Calculation formulas must incorporate randomized variance to maintain user engagement.
+
+## State
+- `EngineHealthStatus`: HEALTHY | DEGRADED | CRITICAL
+
+## Event
+- `Event:EngineRecalibration`: Triggered upon configuration updates or daily resets.
+
+## Example
+- Calculating heart rate calorie expenditure while simultaneously awarding companion spirit experience points.
+
+## Exception
+- Engine calculation failures trigger automatic fallback to cached baseline formulas.
+
+## Related Documents
+- `HEALTH IS ALL/03_BACKEND/dynamic_health_engine_v4.py`
+- `HEALTH IS ALL/03_BACKEND/EXERCISE_ENGINE.mdux`
+
+## Change History
+- v5.0.0 (2026-07-31): Major refactoring for V5 unified architecture.

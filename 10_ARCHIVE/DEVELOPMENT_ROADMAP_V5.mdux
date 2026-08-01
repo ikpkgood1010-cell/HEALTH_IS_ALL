@@ -1,0 +1,39 @@
+# Development Roadmap V5
+
+## Purpose
+Outline future milestones, architectural enhancements, and feature rollout schedules for the 'HEALTH IS ALL' project.
+
+## Scope
+- Mid-term and long-term project planning from Sprint 05 onwards.
+
+## SSOT
+- `HEALTH IS ALL/00_PROJECT_START/DEVELOPMENT_ROADMAP.mdux`
+
+## Definitions
+- **Milestone:** A major delivery phase encompassing multiple integrated sprints and engine upgrades.
+
+## Runtime
+- Strategic project management and agile sprint tracking.
+
+## Rules
+1. Health-first design principles must never be compromised for purely addictive game mechanics.
+2. Continuous user feedback must directly influence subsequent sprint backlog priorities.
+
+## State
+- `RoadmapStatus`: PLANNED | IN_PROGRESS | COMPLETED
+
+## Event
+- `Event:MilestoneCompleted`: Initiates strategic review and retrospective meetings.
+
+## Example
+- Transitioning from V5 core engine stabilization to advanced wearable ecosystem integration.
+
+## Exception
+- Unforeseen technical bottlenecks allow for agile scope re-prioritization upon stakeholder approval.
+
+## Related Documents
+- `HEALTH IS ALL/00_PROJECT_START/PRODUCT_VISION.mdux`
+- `HEALTH IS ALL/01_ARCHITECTURE/CURRENT_SPRINT.mdux`
+
+## Change History
+- v5.0.0 (2026-07-31): Established V5 roadmap and milestone projections.

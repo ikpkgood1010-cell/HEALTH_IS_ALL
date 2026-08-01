@@ -1,0 +1,41 @@
+# HEALTH_GAME_DUAL_BALANCE_SPEC_V1
+
+## Purpose
+건강 지표 표시의 직관성을 보장하면서, 게임 요소가 앱의 유저 몰입감을 최고 수준으로 지원하도록 밸런스 원칙을 정의한다.
+
+## Scope
+운동, 식단, 건강 상태 화면에서의 가시성 우선순위 및 게임 인터랙션(정령, 재화, 경험치)의 연출 표현 수위를 규정한다.
+
+## SSOT
+본 문서는 건강 데이터와 게임 연출 간 디자인 및 로직 밸런스의 SSOT이다.
+
+## Definitions
+* **Health First, Game Enriched**: 건강 정보가 화면의 최우선 시각 요소로 노출되며, 게임 요소는 이를 축하하고 보상하는 동반자 역할을 수행하는 원칙.
+
+## Runtime
+Flutter 프론트엔드 UI 및 백엔드 보상 연산 모듈에서 적용된다.
+
+## Rules
+1. 게임 애니메이션이나 팝업이 사용자의 실제 건강 수치(소모 칼로리, 단백질 섭취량, 수면 시간 등)를 가리지 않아야 한다.
+2. 게임 요소는 허접하거나 단순한 유치함을 지양하며, 세련된 그래픽과 고품질 사운드 이펙트를 유지해야 한다.
+
+## State
+* `BALANCED_DISPLAY`: 건강 수치와 정령 반응이 조화롭게 표시되는 상태.
+
+## Event
+* `RENDER_HEALTH_CARD`: 건강 데이터 카드 렌더링 시 호출.
+
+## Example
+식단 입력 완료 시 건강 영양 그래프가 상단에 명확히 표출되고, 정령 캐릭터는 하단에서 고품질 공감 대화 팝업으로 자연스럽게 축하 이펙트를 출력한다.
+
+## Exception
+사용자가 '건강 집중 모드'를 활성화할 경우 게임 요소 연출이 최소화된 간결 뷰로 전환된다.
+
+## Related Documents
+* `HEALTH IS ALL/04_FRONTEND/DYNAMIC_NUTRITION_UI_SPEC_V8.mdux`
+* `HEALTH IS ALL/05_AI/COMPANION_PERSONALITY_V4_SPEC.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V1 | 2026-07-31 | Product Owner | 건강 기능 최우선 보장 및 고품질 게임성 유지를 위한 최초 밸런스 규격 정의 |

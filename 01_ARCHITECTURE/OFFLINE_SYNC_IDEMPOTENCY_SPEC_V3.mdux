@@ -1,0 +1,42 @@
+# OFFLINE_SYNC_IDEMPOTENCY_SPEC_V3
+
+## Purpose
+오프라인 환경에서 저장된 건강 기록이 온라인 재연결 시 중복 지급 없이 정확하게 단 1회만 처리되도록 안전성을 보장한다.
+
+## Scope
+로컬 SQLite 큐, 트랜잭션 UUID 고유키, 서버 멱등성(Idempotency) 검증 로직을 포함한다.
+
+## SSOT
+본 문서는 오프라인 동기화 및 트랜잭션 안전성의 SSOT 문서이다.
+
+## Definitions
+* **Idempotent Key**: 동일한 요청이 여러 번 전달되어도 서버 상의 결과가 단 한 번만 반영되도록 보장하는 고유 식별자.
+
+## Runtime
+`wearable_sync_engine_v8.py` 및 Flutter 로컬 데이터베이스 모듈에서 구동된다.
+
+## Rules
+1. 모든 오프라인 데이터 생성 시 `UUID_v4` 기반의 고유 트랜잭션 키를 부여해야 한다.
+2. 서버는 이미 처리된 트랜잭션 키 수신 시 보상 중복 지급을 차단하고 기존 성공 응답을 재반환한다.
+
+## State
+* `QUEUED`: 로컬 DB 대기 중
+* `SYNCED`: 서버 동기화 완료
+
+## Event
+* `ON_NETWORK_RESTORED`: 네트워크 재연결 시 큐 데이터 일괄 송신.
+
+## Example
+오프라인 상태에서 입력된 세차 2시간 기록이 네트워크 재연결 시 3번 재시도되더라도, 첫 번째 수신 건만 경험치/골드를 지급하고 이후 건은 무시된다.
+
+## Exception
+트랜잭션 키가 유실된 경우 데이터 타임스탬프 및 사용자 ID 조합 기반 예외 검증을 수행한다.
+
+## Related Documents
+* `HEALTH IS ALL/02_DATABASE/07_schema_migration_v7.sql`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V2 | 2026-07-20 | Backend Lead | 로컬 큐 기초 설계 |
+| V3 | 2026-07-31 | Security Specialist | UUID 기반 멱등성 검증 및 중복 어뷰징 방지 강화 |

@@ -1,0 +1,42 @@
+# DYNAMIC_NUTRITION_UI_SPEC_V8
+
+## Purpose
+프론트엔드 앱의 영양/건강 입력 및 정령 반응 UI 화면 요소 규격을 정의한다.
+
+## Scope
+다변수 영양소 비율 그래프, 정령 캐릭터 실시간 반응 애니메이션 위젯 및 팝업 대화창 인터페이스를 포함한다.
+
+## SSOT
+본 문서는 동적 영양 화면 구현의 SSOT이다.
+
+## Definitions
+* **Spirit Gauge Bar**: 식단 및 운동 달성도에 따라 실시간으로 차오르는 정령 호감도 위젯.
+
+## Runtime
+Flutter 3.x 클라이언트 환경에서 실행된다.
+
+## Rules
+1. 건강 데이터 표시 화면은 전문 용어 대신 친근하고 가시성이 뛰어난 카드 형태 디자인을 유지한다.
+2. 모바일 화면에서 텍스트가 잘리지 않도록 자동 줄바꿈($Auto-wrapping$) 및 반응형 폰트 크기를 적용한다.
+
+## State
+* `UI_IDLE`: 표준 데이터 표시
+* `UI_ANIMATING`: 정령 호감도 상승 애니메이션 출력 중
+
+## Event
+* `ON_MEAL_LOG_SUBMITTED`: 식단 입력 완료 버튼 클릭 시 발생.
+
+## Example
+단백질 식단 등록 시 정령 캐릭터 주변에 반짝이는 이펙트와 함께 "완벽한 단백질 보충이에요!" 팝업 표시.
+
+## Exception
+네트워크 미연결 시 로컬 캐시 데이터를 우선 화면에 표시하고 동기화 대기 아이콘을 노출한다.
+
+## Related Documents
+* `HEALTH IS ALL/04_FRONTEND/UI_SCREEN_SPECIFICATION_V3.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V7 | 2026-07-20 | UI/UX Designer | V7 영양 레이아웃 구성 |
+| V8 | 2026-07-31 | Frontend Lead | V8 정령 동적 반응 애니메이션 및 모바일 자동 줄바꿈 규격 적용 |

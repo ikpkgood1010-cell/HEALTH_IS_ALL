@@ -1,0 +1,40 @@
+# Advanced Quest-Diet Synergy Specification
+
+## Purpose
+Establish precise mathematical formulas linking dietary discipline (e.g., sugar/flour exclusion, steam cooking) with in-game spirit evolution and quest rewards.
+
+## Scope
+- Dynamic nutrition logging, spirit catalyst interaction, and stat multiplier generation.
+
+## SSOT
+- `HEALTH IS ALL/01_ARCHITECTURE/DYNAMIC_NUTRITION_FORMULA_SPEC.mdux`
+
+## Definitions
+- **Diet Synergy Multiplier:** A variable coefficient calculated based on adherence to clean dietary rules.
+
+## Runtime
+- Evaluated upon meal submission and daily reset execution.
+
+## Rules
+1. Repetitive identical meal logs must trigger diminishing returns to prevent exploitation.
+2. Clean food choices (steamed proteins, sugar-free ingredients) exponentially boost spirit growth rates.
+
+## State
+- `SynergyLevel`: Integer (1 to 100)
+- `CatalystStatus`: ACTIVE | COOLDOWN | EXHAUSTED
+
+## Event
+- `Event:MealLogged`: Triggers recalculation of spirit evolution points.
+
+## Example
+- Logging a steamed pork neck meal with zero sugar substitutes grants a 1.45x synergy multiplier for 6 hours.
+
+## Exception
+- Invalid nutritional data inputs default to baseline standard multipliers with an encouraging user notification.
+
+## Related Documents
+- `HEALTH IS ALL/01_ARCHITECTURE/SPIRIT_DIET_CATALYST_SPEC.mdux`
+- `HEALTH IS ALL/03_BACKEND/diet_spirit_engine_v4.py`
+
+## Change History
+- v2.0.0 (2026-07-31): Upgraded with multi-variable diminishing return algorithms.

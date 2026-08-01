@@ -1,0 +1,38 @@
+-- HEALTH IS ALL Database Schema Migration (v1.0)
+
+CREATE TABLE IF NOT EXISTS users (
+id VARCHAR(64) PRIMARY KEY,
+nickname VARCHAR(50) NOT NULL,
+email VARCHAR(100) UNIQUE NOT NULL,
+bmr_kcal INT DEFAULT 1600,
+created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exercise_masters (
+code VARCHAR(50) PRIMARY KEY,
+name VARCHAR(100) NOT NULL,
+met_value NUMERIC(4, 2) NOT NULL,
+category VARCHAR(30) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_progressions (
+user_id VARCHAR(64) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+total_xp INT DEFAULT 0,
+spirit_energy INT DEFAULT 0,
+bond_points INT DEFAULT 0,
+current_mood VARCHAR(30) DEFAULT 'Energetic',
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS reward_logs (
+id SERIAL PRIMARY KEY,
+user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+idempotency_key VARCHAR(128) UNIQUE NOT NULL,
+event_type VARCHAR(50) NOT NULL,
+xp_gained INT DEFAULT 0,
+spirit_energy_gained INT DEFAULT 0,
+bond_points_gained INT DEFAULT 0,
+created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reward_logs_user_date ON reward_logs(user_id, created_at);

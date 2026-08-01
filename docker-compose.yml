@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: health_is_all_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=health_is_all
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_secret
+      - DEBUG=True
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: health_is_all_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=health_is_all
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./02_DATABASE/01_schema_migration.sql:/docker-entrypoint-initdb.d/01_schema_migration.sql
+    restart: always
+
+volumes:
+  postgres_data:

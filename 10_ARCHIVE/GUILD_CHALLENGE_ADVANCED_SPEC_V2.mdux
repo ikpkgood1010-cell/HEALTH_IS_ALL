@@ -1,0 +1,42 @@
+# GUILD_CHALLENGE_ADVANCED_SPEC_V2
+
+## Purpose
+등산 클럽 및 소모임 형태의 커뮤니티('VMTC' 등) 성격에 발맞추어, 팀원들과 함께 건강 미션을 달성하고 협동 시너지를 극대화하기 위한 고도화된 길드 챌린지 규칙을 정의합니다.
+
+## Scope
+- 길드 시스템, 협동 레이드, 팀원 간 랭킹 및 버프 공유 기능
+
+## SSOT
+- 길드 및 협동 콘텐츠 규칙의 단일 진실 공급원(SSOT)
+
+## Definitions
+- **Synergy Ring**: 팀원들의 평균 운동 시간과 식단 준수율에 따라 길드 전체에 적용되는 버프 효과
+- **Co-op Raid**: 공동의 건강 목표(예: 누적 100만 걸음 또는 총 운동 시간 50시간) 달성 시 보상 획득
+
+## Runtime
+- 매일 자정 길드원 데이터 집계 및 실시간 협동 게이지 업데이트
+
+## Rules
+1. 개인의 건강 관리가 곧 팀의 기여로 이어지는 상생 구조를 설계합니다.
+2. 경쟁보다는 협력을 유도하여 모든 팀원이 소외되지 않도록 설계합니다.
+3. 소모임 브랜드('VMTC' 등)의 결속력을 높일 수 있는 전용 칭호와 아이콘을 지원합니다.
+
+## State
+- `guild_status`: active
+- `synergy_level`: level_3
+
+## Event
+- `EVENT_GUILD_GOAL_ACHIEVED`: 공동 목표 달성 시 전체 알림 발송
+
+## Example
+- 길드원 5명이 모두 당류 제한 식단을 3일 연속 성공 시, '철벽 방어' 버프 10% 활성화
+
+## Exception
+- 길드 탈퇴 또는 비활성 멤버 발생 시 기여도 재산정 알고리즘 자동 가동
+
+## Related Documents
+- `03_GAME_SYSTEM/GUILD_CHALLENGE_SPEC.mdux`
+- `03_BACKEND/guild_challenge_engine.py`
+
+## Change History
+- **v2.0 (2026-07-31)**: 소모임 협동 시너지 공식 개편 및 버프 시스템 정비

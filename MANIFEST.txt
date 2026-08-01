@@ -1,0 +1,16 @@
+This archive is the finalized project snapshot after patching naive-UTC handling.
+Key verified changes:
+- Added backend/config.py::utc_now()
+- Replaced runtime datetime.utcnow() calls in backend/*.py with utc_now()
+- Updated test/progression_engine_test.py to use utc_now()
+- Added/updated project docs:
+  * 00_PROJECT/PATCH_007_EXECUTION_REPORT.md
+  * 00_PROJECT/NEXT_AI_HANDOFF_GUIDE_PATCH_007.md
+  * 00_PROJECT/NEXT_AI_WORK_INSTRUCTION_PATCH_008.md
+Verification performed in this environment:
+- grep over backend/test Python files: no remaining datetime.utcnow() runtime references
+- python3 -m compileall backend test
+- pytest -q test/progression_engine_test.py  -> 3 passed
+Excluded from verification:
+- Flutter analyze/test workflows
+- FastAPI integration tests requiring unavailable environment conditions

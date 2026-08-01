@@ -1,0 +1,39 @@
+# Offline Sync V5 Protocol
+
+## Purpose
+Define robust conflict resolution, data idempotency, and offline queue management for users with intermittent network connectivity.
+
+## Scope
+- Local SQLite cache, synchronization queue manager, and conflict resolution strategies.
+
+## SSOT
+- `HEALTH IS ALL/01_ARCHITECTURE/OFFLINE_SYNC_SPEC.mdux`
+
+## Definitions
+- **Idempotent Transaction:** An operation that can be applied multiple times without changing the result beyond the initial application.
+
+## Runtime
+- Client device background isolate and network state listener.
+
+## Rules
+1. Local health records created offline must retain original timestamps upon synchronization.
+2. Conflict resolution must prioritize server-side authoritative state for global leaderboards and client-side authoritative state for personal health logs.
+
+## State
+- `SyncQueueState`: SYNCING | IDLE | CONFLICT_DETECTED | OFFLINE
+
+## Event
+- `Event:NetworkRestored`: Initiates batch synchronization of queued offline transactions.
+
+## Example
+- Syncing 3 days of offline workout logs and meal submissions without data loss or duplication.
+
+## Exception
+- Unresolvable schema version conflicts prompt a user-friendly resolution dialog.
+
+## Related Documents
+- `HEALTH IS ALL/01_ARCHITECTURE/OFFLINE_SYNC_SPEC.mdux`
+- `HEALTH IS ALL/lib/offline_sync_manager.dart`
+
+## Change History
+- v5.0.0 (2026-07-31): Enhanced conflict resolution rules for V5.

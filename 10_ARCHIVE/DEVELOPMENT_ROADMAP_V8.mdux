@@ -1,0 +1,46 @@
+# DEVELOPMENT_ROADMAP_V8
+
+## Purpose
+본 문서는 HEALTH IS ALL 프로젝트의 V8 마일스톤 목표 및 연동 로드맵을 정의한다. 건강 데이터 측정과 RPG 게임성의 완전한 조화를 목표로 한다.
+
+## Scope
+V8 버전에서는 다변수 엔진 연동, 정밀 영양/운동 계산식 도입, 길드 시너지 레이드 연동 및 오프라인-온라인 동기화 안정성 완성을 범위로 한다.
+
+## SSOT
+본 문서는 전체 개발 일정 및 마일스톤 우선순위의 유일한 진실의 원천(SSOT)이다.
+
+## Definitions
+* **V8 Engine**: 건강 지표, 운동 강도, 식단 구성비, 수면 복구율이 정령 동반자 성능 및 RPG 보상에 동시 반영되는 통합 백엔드 코어.
+* **Fallback Mode**: 다변수 계산 중 유효하지 않은 입력값 발생 시 연산 중단 없이 한 단계 간결한 안전 수식으로 전환하는 기능.
+
+## Runtime
+백엔드 Python 3.11+, Flutter 3.x 프론트엔드, PostgreSQL 15 데이터베이스 환경에서 동작한다.
+
+## Rules
+1. 모든 기능 구현은 건강 관리 정확성과 게임적인 재미를 1:1 비중으로 균형 있게 유지해야 한다.
+2. 시스템은 사용자에게 복잡한 공식을 직접 노출하지 않고 직관적이고 친근한 UI/UX 메시지로 전달한다.
+
+## State
+* Phase 1: V8 다변수 계산 수식 및 DB 마이그레이션 적용 (완료)
+* Phase 2: 백엔드 엔진 코어 연동 및 예외 처리 폴백 내장 (완료)
+* Phase 3: 프론트엔드 인터랙티브 UI 및 AI 동반자 대화 로직 업데이트 (진행 중)
+
+## Event
+* `ON_V8_MIGRATION_COMPLETE`: V8 마이그레이션 스크립트 실행 완료 시 발생.
+* `ON_ENGINE_FALLBACK_TRIGGERED`: 연산 중 예외 발생으로 간결 수식 전환 시 로그 기록.
+
+## Example
+사용자가 2시간 동안 세차 작업을 수행하여 500kcal를 소모했을 경우, 심박수 변동성과 결합하여 정령 경험치 +150, 길드 에너지를 +25 포인트로 정밀 계산 후 지급한다.
+
+## Exception
+웨어러블 데이터 누락 시 기본 표준 BMR 계산식으로 자동 전환된다.
+
+## Related Documents
+* `HEALTH IS ALL/01_ARCHITECTURE/UNIFIED_ENGINE_V8_SPEC.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/DYNAMIC_FORMULA_REGISTRY_V7.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V7 | 2026-07-20 | Dev Team | V7 오프라인 동기화 및 건강 피드백 사양 확립 |
+| V8 | 2026-07-31 | Lead Architect | V8 다변수 정밀 수식 연동, 길드 시너지 및 안전 폴백 사양 추가 |

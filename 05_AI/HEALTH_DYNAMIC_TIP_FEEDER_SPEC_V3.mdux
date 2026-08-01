@@ -1,0 +1,76 @@
+[여기부터 복사]
+# HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux
+
+## Purpose
+본 문서는 'HEALTH IS ALL' 앱 내에서 사용자의 실시간 건강 상태, 식단 기록, 수면/회복 지수, 정령(Spirit) 감정 상태를 다변수 세분화 공식으로 종합하여 1~3줄 형태의 사용자 친화적 맞춤형 건강/식단 꿀팁을 동적으로 피딩하는 AI 엔진의 표준 규격을 정의한다.
+
+## Scope
+본 규격은 AI 모듈(`05_AI`), 백엔드 가공 엔진(`03_BACKEND`), 프론트엔드 다이얼로그/팝업 UI(`04_FRONTEND`) 전반에 적용되며, 게임성과 건강성 요소가 서로를 방해하지 않고 최상의 상호작용을 이루도록 보장한다.
+
+## SSOT
+* 본 문서는 동적 팁 제공 알고리즘 및 1~3줄 꿀팁 생성 로직의 단일 진실 공급원(SSOT)이다.
+* 연동 표준: `UNIFIED_ENGINE_V11_SPEC.mdux`, `DYNAMIC_FORMULA_REGISTRY_V8.mdux`, `HEALTH_GAME_DUAL_BALANCE_SPEC_V6.mdux`.
+
+## Definitions
+1. **Dynamic Priority Score ($Score_{tip}$)**: 건강점수, 수분 결핍률, 수면 회복 지수, 정령 상태를 결합하여 우선 피딩할 팁 주제를 결정하는 가중 수치.
+2. **Fallback Formula**: 센서 데이터 누락이나 예외 발생 시 시스템 다운 없이 작동하도록 구성된 1단계 간결 수식.
+3. **Friendly Dialogue Wrapper**: 기계적인 문식을 배제하고 호감적·친화적 말투로 변환하는 문장 가공 프로세서.
+
+## Runtime
+* **실행 시점**: 앱 메인 화면 진입 시, 식단/운동 입력 직후, 정령 터치 시, 일일 리셋 타이머 작동 시.
+* **응답 시간**: < 150ms (로컬 동적 계산 후 클라이언트 서빙).
+
+## Rules
+1. **건강-게임 양립 최상 유지**: 팁 피딩 UI는 게임의 조작성을 방해하지 않아야 하며, 팁 확인 시 마이크로 경험치/친밀도가 조화롭게 제공된다.
+2. **다변수 세분화 계산 공식**:
+   우선순위 점수 수식:
+   Score_tip = alpha * (100 - H_score) + beta * Delta_hydration + gamma * (1.0 - S_recovery) + delta * Psi_spirit
+   * alpha = 0.35, beta = 0.25, gamma = 0.25, delta = 0.15
+   * H_score: 종합 건강 점수 (0 ~ 100)
+   * Delta_hydration: 수분 결핍율 (0.0 ~ 1.0)
+   * S_recovery: 수면 및 회복 지수 (0.0 ~ 1.0)
+   * Psi_spirit: 정령 감정 가중치 (불안/피로: 1.2, 보통: 1.0, 활력: 0.8)
+3. **1단계 간결 공식 (Fallback Rule)**:
+   데이터 연동 오류 또는 결실 발생 시 간결 수식으로 즉시 전환:
+   Score_simple = (100 - H_score) * 0.6 + Delta_hydration * 40
+4. **문장 길이 및 톤앤매너**:
+   * 최소 1줄 ~ 최대 3줄 이내 구성.
+   * 친근하고 따뜻한 어조(예: "~해보는 건 어떨까요?", "오늘도 정말 잘하고 계셔요!") 사용.
+
+## State
+* `IDLE`: 팁 요청 대기 상태.
+* `CALCULATING`: 다변수 수식 연산 중.
+* `FALLBACK`: 데이터 부족으로 간결 수식 적용 중.
+* `FEEDING`: 친화적 문체 가공 완료 후 UI 출력 중.
+
+## Event
+* `EVENT_TIP_REQUEST`: 팁 요청 발생.
+* `EVENT_TIP_GENERATED`: 동적 팁 생성 완료.
+* `EVENT_TIP_ACKNOWLEDGED`: 사용자가 팁 확인 완료 (정령 친밀도 +2, 마이크로 골드 +5 지급).
+
+## Example
+* **입력 데이터**: H_score = 65, Delta_hydration = 0.4, S_recovery = 0.5, Psi_spirit = 1.0
+* **Score_tip 연산**: 0.35*(35) + 0.25*(40) + 0.25*(50) + 0.15*(10) = 12.25 + 10.0 + 12.5 + 1.5 = 36.25
+* **출력 팁 (2줄)**: "오늘 수분 섭취가 조금 부족해요! 따뜻한 물 한 잔으로 몸도 정령도 촉촉하게 채워볼까요?"
+
+## Exception
+* **E_DATA_CORRUPT**: 입력 변수가 Null이거나 음수인 경우 -> `FALLBACK` 상태 전환 후 `Score_simple` 계산.
+* **E_UI_OVERLAP**: 게임 전투/퀘스트 연출 중 팁 팝업 요청 시 -> 알림 스택에 대기 후 IDLE 시점에 출력.
+
+## Related Documents
+* `HEALTH IS ALL/00_PROJECT_START/MASTER_DOCUMENT_INDEX_V3.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/UNIFIED_ENGINE_V11_SPEC.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/DYNAMIC_FORMULA_REGISTRY_V8.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/HEALTH_GAME_DUAL_BALANCE_SPEC_V6.mdux`
+* `HEALTH IS ALL/03_BACKEND/user_friendly_dialogue_manager_v3.py`
+* `HEALTH IS ALL/10_ARCHIVE/HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V2.mdux`
+
+## Change History
+* **v1.0.0**: 최초 팁 피더 표준 제정.
+* **v2.0.0**: 정령 감정 반응 연동 규격 추가.
+* **v3.0.0 (Current)**:
+  * 다변수 세분화 동적 수식($Score_{tip}$) 도입.
+  * 시스템 충돌 방지용 1단계 간결 Fallback 수식 내장.
+  * 호감형·친화적 대화체 및 게임-건강 듀얼 밸런스 완전 연동.
+  * 기존 V2 파일 `10_ARCHIVE`로 이전 명시.
+[여기까지 복사]

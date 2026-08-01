@@ -1,0 +1,46 @@
+[코드 다운로드: HEALTH_GAME_DUAL_BALANCE_SPEC_V3.md]
+[코드 복사]
+<!-- 여기부터 복사 -->
+# HEALTH GAME DUAL BALANCE SPECIFICATION V3
+
+## Purpose
+건강 증진이라는 본래의 목적을 명확히 유지하면서도, 게임 요소의 완성도를 최고 수준으로 끌어올려 사용자의 자발적 참여와 지속성을 극대화하는 듀얼 밸런스 설계 규칙을 정의한다.
+
+## Scope
+앱 전체 UI/UX 흐름, 게임 보상 메커니즘, 정령 인터랙션 및 건강 데이터 시각화의 상호작용 영역.
+
+## SSOT
+`HEALTH IS ALL/03_GAME_SYSTEM/HEALTH_GAME_DUAL_BALANCE_SPEC_V3.md`
+
+## Definitions
+- **Non-Intrusive Gamification**: 게임 요소가 건강 정보 모니터링을 방해하거나 튀지 않도록 조화롭게 배치하는 디자인 원칙.
+- **Health-Driven Progression**: 순수한 플레이 시간이 아닌 실제 건강 개선 활동에 의해서만 게임 성장이 이루어지는 구조.
+
+## Runtime
+프론트엔드 UI 렌더링 및 백엔드 퀘스트/보상 연산 시 상시 가이드를 적용한다.
+
+## Rules
+1. 메인 화면 상단 영역은 항상 사용자의 핵심 건강 데이터(오늘의 칼로리, 걸음 수, 영양 균형)에 우선 할당한다.
+2. 정령 캐릭터 및 게임 퀘스트 팝업은 건강 수치 확인을 가리지 않는 하단/측면 영역에 호감형 문구와 함께 배치한다.
+3. 게임성이 허접하지 않도록 정령 모션, 사운드, 퀘스트 연출의 퀄리티는 높이되, 과도한 이펙트로 건강 정보 가독성을 떨어뜨리지 않는다.
+
+## State
+- `BALANCED`: 건강 정보와 게임 요소가 최적의 비율로 표시되는 상태.
+- `HEALTH_FOCUS`: 건강 데이터 상세 분석 모드 (게임 요소 최소화).
+
+## Event
+- `EVT_VIEW_HEALTH_DETAILS`: 상세 건강 지표 조회 시 게임 UI 축소 트리거.
+
+## Example
+메인 화면 진입 시: 정령이 상단 건강 그래프 옆에서 친근한 인사말("오늘도 건강한 하루를 시작해볼까요?")을 건네며, 데이터 수치를 방해하지 않음.
+
+## Exception
+사용자가 '건강 집중 모드'를 설정할 경우 모든 게임 이펙트를 텍스트형 메시지로 간소화.
+
+## Related Documents
+- `HEALTH IS ALL/04_FRONTEND/DYNAMIC_NUTRITION_UI_SPEC_V10.md`
+- `HEALTH IS ALL/05_AI/HEALTH_FEEDBACK_INTELLIGENCE_SPEC_V9.md`
+
+## Change History
+- 2026-07-31 (V3.0): 게임성 허접함 방지 및 건강 데이터 시각화 보장 듀얼 밸런스 규정 제정.
+<!-- 여기까지 복사 -->

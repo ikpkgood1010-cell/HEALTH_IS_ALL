@@ -1,0 +1,43 @@
+# RELEASE_READINESS_CHECKLIST_V4
+
+## Purpose
+HEALTH IS ALL 서비스의 최종 상용화 배포 전 시스템 안전성, 보안, UX, 수식 정확성을 검증한다.
+
+## Scope
+V8 엔진 연동, Flutter UI 화면 자동 줄바꿈, 오프라인 동기화 멱등성, 밸런스 검증 항목을 포함한다.
+
+## SSOT
+본 문서는 상용화 배포 승인의 최종 유일 진실의 원천(SSOT)이다.
+
+## Definitions
+* **Release Gate**: 모든 검증 항목이 PASS 상태일 때만 실제 마켓 배포를 허용하는 품질 관문.
+
+## Runtime
+최종 빌드 검증 및 QA 팀 배포 승인 단계에서 적용된다.
+
+## Rules
+1. 필수 체크 항목 중 단 1개라도 FAIL일 경우 배포를 즉시 중단한다.
+2. 예외 처리 폴백(Fallback) 수식이 모든 단위 테스트에서 정상 작동함을 확인해야 한다.
+
+## State
+* `CHECKING`: 배포 점검 수행 중
+* `RELEASE_APPROVED`: 최종 배포 승인
+
+## Event
+* `ON_RELEASE_GATE_PASSED`: 배포 승인 완료 시 발생.
+
+## Example
+오프라인 입력 동기화 시 중복 보상 미발생 확인 완료 (PASS).
+
+## Exception
+치명적이지 않은 UI 여백 오차는 후속 패치 항목으로 이관 후 배포를 진행할 수 있다.
+
+## Related Documents
+* `HEALTH IS ALL/00_PROJECT_START/DEVELOPMENT_ROADMAP_V9.mdux`
+* `HEALTH IS ALL/06_QA/QA_TEST_STRATEGY_V7.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V3 | 2026-07-20 | QA Lead | 기본 배포 점검 항목 구성 |
+| V4 | 2026-07-31 | Release Manager | V8/V9 통합 수식, 안전 폴백, 오프라인 멱등성 검증 항목 반영 |

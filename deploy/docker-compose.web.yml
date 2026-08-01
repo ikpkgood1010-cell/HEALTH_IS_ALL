@@ -1,0 +1,57 @@
+# HEALTH IS ALL - 웹 앱 통합 배포
+#
+# 프론트엔드(Flutter web + nginx), 백엔드(FastAPI), DB(Postgres)를 한 번에
+# 띄운다. 사용자는 80번 포트(웹앱 화면) 하나만 접속하면 되고, API 요청은
+# nginx가 내부적으로 backend 컨테이너로 프록시한다.
+#
+# 실행 (프로젝트 루트에서):
+#   docker compose -f deploy/docker-compose.web.yml up --build
+#
+# 접속: http://localhost (또는 서버 IP/도메인)
+
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    container_name: health_is_all_web
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: health_is_all_backend
+    expose:
+      - "8000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=health_is_all
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_secret
+      - DEBUG=False
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: health_is_all_db
+    environment:
+      - POSTGRES_DB=health_is_all
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_secret
+    volumes:
+      - postgres_web_data:/var/lib/postgresql/data
+      - ../02_DATABASE/01_schema_migration.sql:/docker-entrypoint-initdb.d/01_schema_migration.sql
+    restart: always
+
+volumes:
+  postgres_web_data:

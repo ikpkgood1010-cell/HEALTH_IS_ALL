@@ -1,0 +1,45 @@
+# DEVELOPMENT_ROADMAP_V9
+
+## Purpose
+본 문서는 HEALTH IS ALL 프로젝트의 최종 연동 및 기능 동결(Feature Freeze) 마일스톤을 정의한다.
+
+## Scope
+백엔드 연산 로직과 프론트엔드 UI/UX의 완전한 통합, 오프라인 동기화 멱등성 검증, 최종 상용화 배포 준비를 범위로 한다.
+
+## SSOT
+본 문서는 통합 개발 및 배포 일정의 유일한 진실의 원천(SSOT)이다.
+
+## Definitions
+* **Feature Freeze**: 새로운 기능 추가나 수식 개정을 완전히 중단하고 시스템의 안정화 및 통합 테스트에만 집중하는 단계.
+
+## Runtime
+백엔드 Python 3.11+, 프론트엔드 Flutter 3.x, PostgreSQL 15 환경에서 구동된다.
+
+## Rules
+1. 더 이상의 추가 수식 개정이나 기능 확장을 금지하고, 기존 V8 기반 시스템의 완성에 집중한다.
+2. 건강 관리의 직관성과 게임 요소의 조화를 100% 유지하며 배포 안정성을 확보한다.
+
+## State
+* Phase 1: 백엔드 정밀 수식 및 DB 연동 (완료)
+* Phase 2: 프론트엔드 서비스 모듈 및 UI 위젯 이식 (완료)
+* Phase 3: 최종 E2E 통합 테스트 및 배포 준비 (진행 중)
+
+## Event
+* `ON_FEATURE_FREEZE`: 기능 동결 선언 시 발생.
+* `ON_RELEASE_CANDIDATE_READY`: 최종 배포 후보 빌드 생성 시 발생.
+
+## Example
+모바일 앱에서 세차 운동 데이터를 입력하면 로컬 Dart 계산기가 1차 검증 후 백엔드 V8 엔진과 실시간 동기화되어 정령 친밀도 및 경험치를 즉시 업데이트한다.
+
+## Exception
+네트워크 오류 시 로컬 멱등성 큐(Queue)에 보관 후 재연결 시 단 1회만 반영된다.
+
+## Related Documents
+* `HEALTH IS ALL/00_PROJECT_START/RELEASE_READINESS_CHECKLIST_V4.mdux`
+* `HEALTH IS ALL/03_GAME_SYSTEM/HEALTH_GAME_DUAL_BALANCE_SPEC_V1.mdux`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V8 | 2026-07-31 | Lead Architect | V8 다변수 수식 및 예외 안전 폴백 체계 적용 |
+| V9 | 2026-07-31 | Project Manager | 기능 동결(Feature Freeze) 선언 및 프론트엔드 통합 배포 로드맵 확립 |

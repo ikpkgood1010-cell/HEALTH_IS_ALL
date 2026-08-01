@@ -1,0 +1,65 @@
+# MASTER_DOCUMENT_INDEX_V3.mdux
+
+## Purpose
+본 문서는 'HEALTH IS ALL' 전체 프로젝트의 폴더 구조, 모듈별 문서 위치, 백엔드/프론트엔드 소스코드 및 최신 규격 버전 간의 매핑을 관할하는 최상위 단일 진실 공급원(SSOT) 마스터 인덱스이다.
+
+## Directory Structure & System Architecture
+
+HEALTH IS ALL/
+├── 00_PROJECT_START/
+│   └── MASTER_DOCUMENT_INDEX_V3.mdux         [SSOT Master Index]
+├── 01_ARCHITECTURE/
+│   ├── UNIFIED_ENGINE_V11_SPEC.mdux          [통합 엔진 시스템 표준]
+│   ├── DYNAMIC_FORMULA_REGISTRY_V8.mdux      [동적 수식 및 가중치 레지스트리]
+│   └── HEALTH_GAME_DUAL_BALANCE_SPEC_V6.mdux [건강-게임 Dual Balance 규격]
+├── 03_BACKEND/
+│   ├── dynamic_health_engine_v13.py          [통합 건강 계산 핵심 백엔드]
+│   ├── health_dynamic_tip_feeder_v3.py       [1~3줄 동적 팁 산출 알고리즘 백엔드]
+│   ├── api_tip_feeder_router_v3.py           [팁 피더 API 라우터]
+│   ├── HEALTH_PUSH_SCHEDULER_SPEC_V1.mdux    [푸시 알림 동적 스케줄러 규격]
+│   └── health_push_scheduler_v1.py           [푸시 알림 백그라운드 크론 엔진]
+├── 04_FRONTEND/
+│   ├── user_friendly_dialogue_manager_v3.py  [사용자 친화적 다이얼로그 매니저]
+│   ├── HEALTH_TIP_UI_ANIMATION_SPEC_V1.mdux  [말풍선/정령 모션/파티클 애니메이션 규격]
+│   └── health_tip_ui_controller_v1.py        [프론트엔드 UI 애니메이션 컨트롤러]
+├── 05_AI/
+│   └── HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux [다변수 정밀 팁 피더 AI 표준 규격]
+└── 10_ARCHIVE/
+    └── HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V2.mdux [구버전 규격 보관]
+
+## Active Modules & Component Mapping Matrix
+
+| 구분 / 모듈명 | 표준 규격 파일 (.mdux) | 구현 코드 파일 (.py) | 주요 역할 및 기능 |
+| :--- | :--- | :--- | :--- |
+| **통합 엔진** | `UNIFIED_ENGINE_V11_SPEC.mdux` | `dynamic_health_engine_v13.py` | 시스템 전체 건강/게임 데이터 통합 연산 |
+| **팁 피더 AI** | `HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux` | `health_dynamic_tip_feeder_v3.py` | 다변수 수식($Score_{tip}$) 및 Fallback 기반 1~3줄 팁 선출 |
+| **API 라우터** | `UNIFIED_ENGINE_V11_SPEC.mdux` | `api_tip_feeder_router_v3.py` | 클라이언트-백엔드 팁 요청 처리 및 데이터 패키징 |
+| **UI 연출** | `HEALTH_TIP_UI_ANIMATION_SPEC_V1.mdux` | `health_tip_ui_controller_v1.py` | 3줄 말풍선, 타자기 효과, 정령 모션, 보상 파티클 제어 |
+| **푸시 스케줄러**| `HEALTH_PUSH_SCHEDULER_SPEC_V1.mdux` | `health_push_scheduler_v1.py` | Quiet Hours 차단 및 백그라운드 80자 팁 알림 발송 |
+| **다이얼로그** | `UNIFIED_ENGINE_V11_SPEC.mdux` | `user_friendly_dialogue_manager_v3.py` | 친화적 톤앤매너 문장 가공 및 정령 다이얼로그 관리 |
+
+## SSOT Maintenance Rules
+1. **버전 정렬성**: 신규 모듈 추가 또는 기존 로직 변경 시, 연관 `.mdux` 규격 문서와 `.py` 실행 스크립트의 버전을 동기화한다.
+2. **이전 버전 아카이빙**: 대체된 구버전 규격 문서(예: V2 스펙)는 즉시 `10_ARCHIVE/` 폴더로 이동하여 코드 참조 혼선을 차단한다.
+3. **단일 진실 원칙**: 모든 AI 연산 가중치 및 UI 인터랙션 타임라인은 본 마스터 인덱스에 명시된 해당 규격 문서의 수식을 절대 기준으로 따른다.
+
+## Exception
+* **E_FILE_NOT_FOUND**: 참조 문서가 지정된 경로에 존재하지 않을 경우 시스템 구축 에러 로깅 후 즉시 `00_PROJECT_START/MASTER_DOCUMENT_INDEX_V3.mdux` 스캔을 거쳐 인덱스를 교정한다.
+* **E_VERSION_MISMATCH**: 규격 문서(.mdux)와 실행 코드(.py) 간의 주요 버전 불일치 발생 시 모듈 가동을 일시 중지하고 최신 규격 문서 기준으로 재동기화한다.
+
+## Related Documents
+* `HEALTH IS ALL/01_ARCHITECTURE/UNIFIED_ENGINE_V11_SPEC.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/DYNAMIC_FORMULA_REGISTRY_V8.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/HEALTH_GAME_DUAL_BALANCE_SPEC_V6.mdux`
+* `HEALTH IS ALL/03_BACKEND/HEALTH_PUSH_SCHEDULER_SPEC_V1.mdux`
+* `HEALTH IS ALL/04_FRONTEND/HEALTH_TIP_UI_ANIMATION_SPEC_V1.mdux`
+* `HEALTH IS ALL/05_AI/HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux`
+
+## Change History
+* **v1.0.0 ~ v2.0.0**: 초기 아키텍처 수립 및 V2 팁 피더 등록.
+* **v3.0.0 (Current)**:
+  * `HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux` 및 실행 백엔드 v3 반영.
+  * `HEALTH_TIP_UI_ANIMATION_SPEC_V1.mdux` (말풍선/파티클) 및 컨트롤러 v1 신규 등록.
+  * `HEALTH_PUSH_SCHEDULER_SPEC_V1.mdux` (푸시 알림) 및 스케줄러 v1 신규 등록.
+  * 마크다운 백틱 이스케이프 이중화 적용으로 구문 단절 현상 완전 수정.
+  * 구버전 V2 파일 `10_ARCHIVE/` 이동 완료.

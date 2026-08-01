@@ -1,0 +1,43 @@
+# HEALTH_FEEDBACK_INTELLIGENCE_SPEC_V2
+
+## Purpose
+사용자의 건강 데이터 및 식단/운동 패턴을 분석하여, AI 동반자(Spirit)가 친화적이고 동기부여가 되는 피드백을 실시간으로 제공하도록 지능형 응답 체계를 규정합니다.
+
+## Scope
+- AI 에이전트 서비스 및 알림 엔진 연동 영역
+- 감정 엔진(`EMOTION_ENGINE`)과의 실시간 상태 동기화
+
+## SSOT
+- AI 피드백 및 성격 표현 정책의 단일 진실 공급원(SSOT)
+
+## Definitions
+- **Empathy Score**: 사용자의 컨디션 저하 시 공감과 위로의 비중을 높이는 동적 지표
+- **Tone & Manner**: 이용자 친화적이고 따뜻하며 긍정적인 화법 유지
+
+## Runtime
+- 사용자가 일일 리포트를 확인하거나 운동/식단 기록을 마친 직후 구동
+
+## Rules
+1. 강압적이거나 지시적인 문구는 배제하고, 사용자 성취를 진심으로 축하하고 격려합니다.
+2. 민감한 건강 상태 및 프라이버시 관련 데이터는 절대 자의적으로 추론하거나 노출하지 않습니다.
+3.모바일 화면에서 가독성이 좋도록 1~3줄 이내의 핵심 팁과 꿀팁 형태로 간결하게 제공합니다.
+
+## State
+- `ai_mode`: empathetic_and_supportive
+- `feedback_frequency`: adaptive
+
+## Event
+- `EVENT_FEEDBACK_REQUESTED`: 기록 완료 시 이벤트 발생
+
+## Example
+- "오늘도 당과 튀긴 음식을 멀리하고 건강한 식단을 지켜내셨네요! 정령의 에너지가 한층 더 맑아졌습니다."
+
+## Exception
+- AI 서버 통신 지연 시 로컬 캐시된 기본 격려 문구 팝업 출력
+
+## Related Documents
+- `05_AI/COMPANION_PERSONALITY.mdux`
+- `05_AI/HEALTH_FEEDBACK_POLICY.mdux`
+
+## Change History
+- **v2.0 (2026-07-31)**: 감성 공감 지표 고도화 및 숏폼 피드백 포맷 적용

@@ -1,0 +1,54 @@
+# HEALTH_MONITORING_SPEC_V1.mdux
+
+## Purpose
+본 문서는 'HEALTH IS ALL' 서비스 가동 중 발생하는 백엔드 연산, AI 팁 피더 추론, 프론트엔드 UI 이벤트, 푸시 발송 상태 등의 성능 지표(KPI) 및 에러 로그를 수집·분석하는 모니터링 시스템의 표준 규격을 정의한다.
+
+## Scope
+본 규격은 AI 모듈(`05_AI`), 백엔드 엔진 및 API 라우터(`03_BACKEND`), 프론트엔드 UI 컨트롤러(`04_FRONTEND`) 전반에 적용된다.
+
+## SSOT
+* 본 문서는 'HEALTH IS ALL' 시스템 성능 모니터링, KPI 산출, 로깅 정책의 단일 진실 공급원(SSOT)이다.
+* 연동 표준: `UNIFIED_ENGINE_V11_SPEC.mdux`, `MASTER_DOCUMENT_INDEX_V3.mdux`, `HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux`.
+
+## Definitions
+1. **Tip Generation Latency**: AI 팁 피더가 다변수 수식을 연산하고 1~3줄 문장을 가공하여 반환할 때까지 소요되는 실시간 시간(목표: < 150ms).
+2. **Fallback Rate**: 전체 팁 요청 건수 대비 입력 데이터 오류/누락으로 인해 간결 수식($Score_{simple}$)으로 전환된 건수의 비율(목표: < 1.0%).
+3. **Push Dispatch Success Rate**: FCM/APNs 푸시 알림 게이트웨이를 통한 메시지 전달 성공 비율(목표: > 99.0%).
+
+## Runtime
+* **실행 시점**: AI 팁 연산, API 요청 처리, UI 터치 이벤트, 푸시 발송 시점마다 비동기 백그라운드 이벤트 로깅.
+* **리포트 주기**: 매 1분 단위 KPI 집계 및 매 정각 종합 성능 리포트 생성.
+
+## Rules
+1. **비동기 인터셉트**: 모니터링 및 로깅 프로세스는 메인 팁 생성 및 UI 응답 속도에 영향을 주지 않도록 반드시 비동기 메커니즘으로 동작해야 한다.
+2. **임계값 경고**: Latency가 300ms를 초과하거나, Fallback 비율이 5.0% 이상으로 증가할 경우 즉시 시스템 경고(System Alert) 이벤트를 발생시킨다.
+
+## State
+* `NORMAL`: 모든 지표가 표준 범위 내에서 정상 작동 중인 상태.
+* `WARNING`: Latency 또는 Fallback 비율이 임계값을 초과하여 가속 점검이 필요한 상태.
+* `CRITICAL`: 시스템 서비스 응답 불능 또는 연속 에러 발생 상태.
+
+## Event
+* `EVENT_METRIC_COLLECTED`: 단일 이벤트 성능 지표 수집 완료.
+* `EVENT_THRESHOLD_EXCEEDED`: 성능 지표 임계값 초과 경고 발생.
+* `EVENT_REPORT_GENERATED`: 정기 KPI 성능 리포트 생성 완료.
+
+## Example
+* **집계 수치**: 총 요청 1,000건, 평균 Latency 62ms, Fallback 발생 2건 (0.2%).
+* **모니터링 판정 결과**: 상태 `NORMAL` (시스템 정상 가동 중).
+
+## Exception
+* **E_LOG_WRITE_FAILURE**: 디스크 I/O 또는 네트워크 지연으로 로깅 실패 시 로컬 인메모리 버퍼에 최대 5,000건까지 임시 저장 후 백업 처리.
+* **E_METRIC_CORRUPT**: 측정 지표 수치가 음수이거나 비정상 데이터일 경우 해당 지표를 디스카밍(Discard)하고 에러 수집 카운터를 증가시킨다.
+
+## Related Documents
+* `HEALTH IS ALL/00_PROJECT_START/MASTER_DOCUMENT_INDEX_V3.mdux`
+* `HEALTH IS ALL/01_ARCHITECTURE/UNIFIED_ENGINE_V11_SPEC.mdux`
+* `HEALTH IS ALL/03_BACKEND/api_tip_feeder_router_v3.py`
+* `HEALTH IS ALL/03_BACKEND/health_push_scheduler_v1.py`
+* `HEALTH IS ALL/05_AI/HEALTH_DYNAMIC_TIP_FEEDER_SPEC_V3.mdux`
+
+## Change History
+* **v1.0.0 (Current)**:
+  * 실시간 모니터링 지표, 경고 임계값 및 비동기 로깅 표준 최초 제정.
+  * 필수 마크다운 규격(SSOT, Related Documents, Change History) 준수 적용.

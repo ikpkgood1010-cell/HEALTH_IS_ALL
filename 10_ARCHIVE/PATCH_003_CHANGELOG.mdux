@@ -1,0 +1,40 @@
+# PATCH_003_CHANGELOG
+
+## Purpose
+'HEALTH IS ALL' 프로젝트의 패치 003 단계에서 도입된 동적 계산식, 클린 식단 엔진, AI 피드백 지능형 시스템 및 UI 자동 줄바꿈 개선 사항의 변경 이력을 기록합니다.
+
+## Scope
+- 아키텍처, 백엔드 엔진, 프론트엔드 UI, 데이터베이스 스키마 전반
+
+## SSOT
+- 프로젝트 패치 이력의 단일 진실 공급원(SSOT)
+
+## Definitions
+- **Patch 003**: 다변화된 수식 적용 및 모바일 UI/UX 편의성 대폭 강화 버전
+
+## Runtime
+- 배포 및 버전 관리 시스템에 상시 참조
+
+## Rules
+1. 모든 주요 변경 사항은 본 체인지로그에 누락 없이 기록합니다.
+2. 버전 업그레이드 규칙을 준수하여 기존 문서와의 충돌을 방지합니다.
+
+## State
+- `current_patch`: PATCH_003
+- `status`: deployed
+
+## Event
+- `EVENT_PATCH_APPLIED`: 패치 적용 완료 시 시스템 로그 기록
+
+## Example
+- Dynamic Formula Registry V4 및 Diet Spirit Engine V4 성공적 통합 완료
+
+## Exception
+- 마이그레이션 충돌 발생 시 이전 버전(V3) 백업본으로 롤백 지원
+
+## Related Documents
+- `00_PROJECT/PATCH_HISTORY/PATCH_001_CHANGELOG.mdux`
+- `00_PROJECT/PATCH_HISTORY/PATCH_002_CHANGELOG.mdux`
+
+## Change History
+- **v1.0 (2026-07-31)**: 패치 003 정식 릴리즈 문서 작성 완료

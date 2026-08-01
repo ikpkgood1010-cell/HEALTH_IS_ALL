@@ -1,0 +1,44 @@
+# UNIFIED_ENGINE_V8_SPEC
+
+## Purpose
+통합 건강-게임 백엔드 엔진의 V8 아키텍처 규격을 정의한다.
+
+## Scope
+운동 소모 칼로리, 단백질/대체당 섭취 비율, 수면 점수, 길드 협동 점수를 하나의 유기적 공식으로 결합한다.
+
+## SSOT
+본 문서는 V8 통합 엔진 계산 및 데이터 흐름의 SSOT 문서이다.
+
+## Definitions
+* **Multi-Variable Formula**: 단순 가산 방식이 아닌, 복수의 건강 변수(심박수, 수면, 영양비율)가 서로의 계수에 영향을 주는 정밀 연산식.
+
+## Runtime
+`dynamic_health_engine_v8.py` 및 `diet_spirit_engine_v8.py`에서 실행된다.
+
+## Rules
+1. 건강 지표 계산식은 고정값 반환을 금지하며, 매 회차 입력에 따라 세분화된 결과를 산출한다.
+2. 계산 오류 위험 감지 시 정밀 공식에서 1단계 간결 공식으로 즉시 전환한다.
+
+## State
+* `NORMAL_PRECISION`: 정밀 다변수 연산 모드
+* `SAFE_FALLBACK`: 간결 수식 전환 모드
+
+## Event
+* `CALCULATE_HEALTH_SCORE`: 사용자 건강 데이터 수신 시 호출
+* `APPLY_GAME_REWARD`: 건강 점수 기반 경험치 및 아이템 보상 지급
+
+## Example
+식단 입력 시 당류 0g, 대체당 사용, 단백질 30g 충족 시 정령 친밀도 보너스 계수 1.35x 적용.
+
+## Exception
+입력 데이터 범위 초과(예: 수면시간 > 24시간) 시 유효성 검증 실패 이벤트를 발송하고 기본 안전값(7시간)으로 보정 후 처리한다.
+
+## Related Documents
+* `HEALTH IS ALL/01_ARCHITECTURE/DYNAMIC_FORMULA_REGISTRY_V7.mdux`
+* `HEALTH IS ALL/03_BACKEND/dynamic_health_engine_v8.py`
+
+## Change History
+| 버전 | 변경 일자 | 변경자 | 변경 내용 및 근거 |
+| :--- | :--- | :--- | :--- |
+| V7 | 2026-07-20 | Dev Team | V7 통합 엔진 구동 규격 명시 |
+| V8 | 2026-07-31 | Lead Architect | 다변수 상호작용 및 Fallback 메커니즘 명세화 |

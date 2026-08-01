@@ -1,0 +1,39 @@
+# QA Test Strategy V5
+
+## Purpose
+Establish comprehensive automated and manual testing protocols for backend calculation engines, frontend UI responsiveness, and offline sync integrity.
+
+## Scope
+- Unit tests, integration tests, end-to-end user flow validations, and performance budgeting.
+
+## SSOT
+- `HEALTH IS ALL/06_QA/QA_TEST_STRATEGY.mdux`
+
+## Definitions
+- **Test Coverage Threshold:** Minimum 85% code coverage requirement across all core calculation engines.
+
+## Runtime
+- Continuous Integration (CI) pipeline and local development test runners.
+
+## Rules
+1. Every new dynamic formula must include randomized boundary test cases.
+2. Performance regressions exceeding 50ms execution time fail the CI build automatically.
+
+## State
+- `TestRunStatus`: PASSED | FAILED | SKIPPED | RUNNING
+
+## Event
+- `Event:CIBuildTriggered`: Initiates automated test suite execution.
+
+## Example
+- Running automated integration tests to verify nutrition calculation accuracy under extreme caloric inputs.
+
+## Exception
+- Flaky network-dependent tests are isolated and re-run up to 3 times before failing the pipeline.
+
+## Related Documents
+- `HEALTH IS ALL/06_QA/QA_IMPLEMENTATION_STRATEGY.mdux`
+- `HEALTH IS ALL/test/system_integration_test.py`
+
+## Change History
+- v5.0.0 (2026-07-31): Updated for V5 engine architecture and offline sync verification.

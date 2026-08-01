@@ -1,0 +1,41 @@
+# RECOVERY_BALANCE_SPEC_V2
+
+## Purpose
+고강도 운동 및 수동 가사 노동(예: 손세차 등 신체 활동) 이후 사용자의 피로도를 정밀하게 측정하고, 최적의 수면 및 회복 솔루션을 제공하기 위한 밸런스 규격을 정의합니다.
+
+## Scope
+- 수면 분석 엔진, 피로도 계산기, 회복 리포트 위젯
+
+## SSOT
+- 회복 및 수면 밸런스 규칙의 단일 진실 공급원(SSOT)
+
+## Definitions
+- **Recovery Index**: 수면 시간, 심박 변이도(HRV), 최근 활동량을 종합하여 산출한 신체 회복 점수
+- **Rest Recommendation**: 피로도 누적 시 무리한 운동 대신 가벼운 스트레칭이나 찜질을 권장하는 시스템
+
+## Runtime
+- 매일 아침 앱 실행 시 및 취침 전 리포트 생성 시 구동
+
+## Rules
+1. 무리한 운동으로 인한 부상을 방지하기 위해 회복 지수가 낮을 경우 경고 팝업과 함께 휴식을 유도합니다.
+2. 수면 데이터와 일상 활동량(세차, 보행 등)을 연동하여 입체적인 회복 가이드를 제공합니다.
+
+## State
+- `recovery_status`: optimal
+- `fatigue_level`: low
+
+## Event
+- `EVENT_RECOVERY_CALCULATED`: 수면 및 활동 데이터 동기화 시 발생
+
+## Example
+- 2시간 동안의 손세차 노동 후 칼로리 소모량 반영 및 휴식 권장 푸시 알림 발송
+
+## Exception
+- 웨어러블 기기 연동 오류 시 수동 입력 모드로 전환
+
+## Related Documents
+- `01_ARCHITECTURE/RECOVERY_BALANCE_SPEC.mdux`
+- `lib/recovery_balance_widget.dart`
+
+## Change History
+- **v2.0 (2026-07-31)**: 일상 신체 활동(세차 등) 칼로리 및 피로도 연동 알고리즘 추가
