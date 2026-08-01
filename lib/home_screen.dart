@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/health_i_widget.dart';
 import 'api_data_provider.dart';
+import 'spirit_screen.dart';
+import 'workout_screen.dart';
+import 'diet_screen.dart';
 
 /// HEALTH IS ALL - Main Home Screen
 /// Dual-Excellence: 건강 정보의 명확한 전달 + '건강이' 게임성 조화
 ///
 /// [레퍼런스 구현] 이 화면은 ApiDataProvider(실제 백엔드 연동)를 사용하는
-/// 예시다. 다른 화면(diet_screen, workout_screen 등)도 동일한 패턴을
-/// 따르면 된다:
-///   1. initState에서 context.read<ApiDataProvider>().refreshStatus() 호출
-///   2. build에서 context.watch<ApiDataProvider>()로 값을 구독
-///   3. 기록 버튼에서 provider의 async 메서드(logMeal 등) 호출
-///   4. isLoading / lastError를 살펴 로딩 인디케이터·에러 스낵바 표시
+/// 예시다.
+///
+/// 화면 순서(사용자 요청 반영):
+///   1. 상단 - 정령(미니게임) 섹션
+///   2. 중간 - 운동 섹션
+///   3. 하단 - 식단/칼로리 섹션
+/// 각 섹션 끝에는 그동안 화면은 있었지만 진입 경로가 없어 "고아 화면"으로
+/// 남아있던 SpiritScreen/WorkoutScreen/DietScreen으로 가는 카드형 버튼을
+/// 추가했다.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -24,7 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 화면 진입 시 서버에서 최신 상태를 가져온다.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ApiDataProvider>().refreshStatus();
     });
@@ -122,45 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+
+              // ============== 1. 상단: 정령 / 미니게임 섹션 ==============
               const Text(
-                '오늘의 건강 요약',
+                '나의 정령',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildHealthCard(
-                      title: '칼로리',
-                      value: '${provider.consumedCalories}',
-                      unit: '/ ${provider.targetCalories} kcal',
-                      icon: Icons.local_fire_department,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildHealthCard(
-                      title: '오늘 운동',
-                      value: '${provider.workoutMinutes}',
-                      unit: '분',
-                      icon: Icons.fitness_center,
-                      color: Colors.deepOrange,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildHealthCard(
-                      title: '수분',
-                      value: provider.waterLiters.toStringAsFixed(1),
-                      unit: 'L / ${provider.targetWaterLiters.toStringAsFixed(1)}L',
-                      icon: Icons.water_drop,
-                      color: Colors.cyan,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -184,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               HealthIWidget(
                 currentExp: provider.currentExp,
                 level: provider.level,
@@ -192,12 +165,88 @@ class _HomeScreenState extends State<HomeScreen> {
                 dialogue: provider.dialogue,
                 onTapHealthI: _onTapHealthI,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              _buildNavCard(
+                icon: Icons.auto_awesome,
+                title: '정령이랑 더 놀아주기',
+                subtitle: '교감하고 정령의 속성 균형을 확인해요',
+                color: Colors.purple,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SpiritScreen()),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ============== 2. 중간: 운동 섹션 ==============
               const Text(
-                '빠른 기록하기',
+                '오늘 운동',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
+              _buildHealthCard(
+                title: '오늘 운동',
+                value: '${provider.workoutMinutes}',
+                unit: '분',
+                icon: Icons.fitness_center,
+                color: Colors.deepOrange,
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: _buildActionButton(
+                  icon: Icons.fitness_center,
+                  label: '운동 +30분',
+                  color: Colors.deepOrange,
+                  onTap: () => _quickLog(
+                    action: () => provider.logWorkout(30, 200),
+                    successMessage: '운동 30분 기록 완료! 50 Exp 획득',
+                    color: Colors.deepOrange.shade600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildNavCard(
+                icon: Icons.edit_note,
+                title: '운동 상세 기록하기',
+                subtitle: '운동 종목/강도까지 직접 입력해요',
+                color: Colors.deepOrange,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // ============== 3. 하단: 식단 / 칼로리 섹션 ==============
+              const Text(
+                '식단과 칼로리',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildHealthCard(
+                      title: '칼로리',
+                      value: '${provider.consumedCalories}',
+                      unit: '/ ${provider.targetCalories} kcal',
+                      icon: Icons.local_fire_department,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildHealthCard(
+                      title: '수분',
+                      value: provider.waterLiters.toStringAsFixed(1),
+                      unit: 'L / ${provider.targetWaterLiters.toStringAsFixed(1)}L',
+                      icon: Icons.water_drop,
+                      color: Colors.cyan,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -212,16 +261,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   _buildActionButton(
-                    icon: Icons.fitness_center,
-                    label: '운동 +30분',
-                    color: Colors.deepOrange,
-                    onTap: () => _quickLog(
-                      action: () => provider.logWorkout(30, 200),
-                      successMessage: '운동 30분 기록 완료! 50 Exp 획득',
-                      color: Colors.deepOrange.shade600,
-                    ),
-                  ),
-                  _buildActionButton(
                     icon: Icons.water_drop,
                     label: '물 250ml',
                     color: Colors.cyan,
@@ -233,6 +272,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildNavCard(
+                icon: Icons.edit_note,
+                title: '식단 상세 기록하기',
+                subtitle: '식사 종류/탄단지까지 직접 입력해요',
+                color: Colors.green,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DietScreen()),
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -319,6 +369,57 @@ class _HomeScreenState extends State<HomeScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 그동안 진입 경로가 없어 "고아 화면"으로 남아있던 상세 화면들
+  /// (정령/운동/식단)로 이동하는 카드형 버튼.
+  Widget _buildNavCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: color),
           ],
         ),
       ),

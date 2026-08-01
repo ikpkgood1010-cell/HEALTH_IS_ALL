@@ -19,7 +19,7 @@ int _currentIndex = 0;
 final List<Widget> _screens = [
 const HomeScreen(),
 const QuestScreen(),
-const ShopScreen(currentExp: 120), // 모의 데이터 연결
+const ShopScreen(),
  ];
 
 @override

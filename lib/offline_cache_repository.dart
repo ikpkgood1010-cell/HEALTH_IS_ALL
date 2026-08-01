@@ -104,11 +104,11 @@ return null;
 List<CachedRecord> _getAllRecords() {
 final List<CachedRecord> list = [];
 for (var key in _recordsBox.keys) {
-final jsonString = recordsBox.get(key);
+final jsonString = _recordsBox.get(key);
 if (jsonString != null) {
 try {
 list.add(CachedRecord.fromJson(jsonDecode(jsonString)));
-} catch () {
+} catch (_) {
 // 손상된 데이터 패스
 }
 }
@@ -123,14 +123,16 @@ final now = DateTime.now();
 final keysToDelete = <dynamic>[];
 
 for (var key in _recordsBox.keys) {
-final jsonString = recordsBox.get(key);
+final jsonString = _recordsBox.get(key);
 if (jsonString != null) {
 try {
 final record = CachedRecord.fromJson(jsonDecode(jsonString));
 if (record.isSynced && now.difference(record.createdAt).inDays > 30) {
 keysToDelete.add(key);
 }
-} catch () {}
+} catch (_) {
+// 손상된 데이터 패스
+}
 }
 }
 

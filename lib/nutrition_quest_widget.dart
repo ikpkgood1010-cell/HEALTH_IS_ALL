@@ -45,7 +45,7 @@ class NutritionQuestWidget extends StatelessWidget {
             // Title Header
             const Row(
               children: [
-                Icon(Icons.assignment_turn_in_outlined, color: Colors.tealAccent, size: 22),
+                Icon(Icons.assignment_turned_in_outlined, color: Colors.tealAccent, size: 22),
                 SizedBox(width: 8),
                 Text(
                   '일일 맞춤 건강 퀘스트',

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'api_data_provider.dart';
 
 /// HEALTH IS ALL - '건강이' Shop & Customization Screen
 /// SSOT Standard: Exp, 건강이
 class ShopScreen extends StatefulWidget {
-  final int currentExp;
-
-  const ShopScreen({Key? key, required this.currentExp}) : super(key: key);
+  const ShopScreen({Key? key}) : super(key: key);
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -44,7 +44,7 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   void initState() {
     super.initState();
-    _userExp = widget.currentExp;
+    _userExp = 0;
   }
 
   void _buySkin(int index) {
@@ -66,6 +66,11 @@ class _ShopScreenState extends State<ShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final liveExp = context.watch<ApiDataProvider>().currentExp;
+    if (liveExp > _userExp) {
+      _userExp = liveExp;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("'건강이' 상점", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),

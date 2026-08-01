@@ -117,12 +117,10 @@ const SizedBox(height: AppSpacing.xs),
 _buildTargetTile(
 context,
 ref,
-icon: Icons.local_fire_department,
-iconColor: Colors.orange,
-title: '목표 칼로리',
-valueText: '
-
-{profile.targetWaterMl} ml',
+icon: Icons.water_drop,
+iconColor: Colors.cyan,
+title: '목표 수분량',
+valueText: '${profile.targetWaterMl} ml',
 onTap: () => _showEditTargetDialog(
 context,
 ref,
@@ -379,8 +377,6 @@ child: const Text('로그아웃'),
 }
 
 String _formatTime(DateTime dt) {
-return '
-
-{dt.minute.toString().padLeft(2, '0')}';
+return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }
 }

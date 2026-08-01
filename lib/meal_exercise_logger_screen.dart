@@ -233,7 +233,7 @@ decoration: BoxDecoration(
 color: isSelected ? AppColors.primary500 : Colors.white,
 borderRadius: AppRadius.borderRadiusMd,
 border: Border.all(
-color: isSelected ? AppColors.primary500 : AppColors.neutral300,
+color: isSelected ? AppColors.primary500 : AppColors.neutral500,
 ),
 ),
 child: Text(
@@ -384,9 +384,7 @@ fontWeight: FontWeight.bold,
 ),
 ),
 title: Text(record.foodName, style: AppTypography.bodyMd),
-subtitle: Text('[
-
-{record.calories} kcal'),
+subtitle: Text('${record.calories} kcal'),
 ),
 );
 }).toList(),
@@ -405,13 +403,11 @@ children: records.map((record) {
 return Card(
 child: ListTile(
 leading: const CircleAvatar(
-backgroundColor: AppColors.secondary100,
+backgroundColor: AppColors.primary100,
 child: Icon(Icons.directions_run, color: AppColors.secondary500),
 ),
 title: Text(record.exerciseName, style: AppTypography.bodyMd),
-subtitle: Text('
-
-{record.caloriesBurned} kcal 소모'),
+subtitle: Text('${record.caloriesBurned} kcal 소모'),
 ),
 );
 }).toList(),

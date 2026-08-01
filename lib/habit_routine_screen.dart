@@ -196,9 +196,7 @@ mainAxisAlignment: MainAxisAlignment.spaceBetween,
 children: [
 Text('오늘의 달성률', style: AppTypography.titleMd),
 Text(
-'
-
-total 완료',
+'$completed / $total 완료',
 style: AppTypography.bodyMd.copyWith(
 color: AppColors.primary500,
 fontWeight: FontWeight.bold,
@@ -239,7 +237,7 @@ _chipItem(ref, '🌙 저녁', HabitCategory.evening, selectedCategory),
 );
 }
 
-Widget chipItem(
+Widget _chipItem(
 WidgetRef ref, String label, HabitCategory category, HabitCategory selectedCategory) {
 final isSelected = category == selectedCategory;
 return ChoiceChip(
@@ -251,13 +249,13 @@ labelStyle: TextStyle(
 color: isSelected ? Colors.white : AppColors.neutral900,
 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
 ),
-onSelected: () {
+onSelected: (_) {
 ref.read(habitFilterProvider.notifier).state = category;
 },
 );
 }
 
-Widget buildHabitCard(WidgetRef ref, HabitRoutineModel habit) {
+Widget _buildHabitCard(WidgetRef ref, HabitRoutineModel habit) {
 return Card(
 child: ListTile(
 contentPadding: const EdgeInsets.symmetric(
@@ -268,7 +266,7 @@ leading: Checkbox(
 value: habit.isCompleted,
 activeColor: AppColors.primary500,
 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-onChanged: () {
+onChanged: (_) {
 ref.read(habitRoutineProvider.notifier).toggleHabit(habit.id);
 },
 ),
