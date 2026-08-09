@@ -13,20 +13,11 @@ class Settings:
     DAILY_EXP_CAP: int = int(os.getenv("DAILY_EXP_CAP", "300"))
     ANTI_FARMING_INTERVAL_MINUTES: int = int(os.getenv("ANTI_FARMING_INTERVAL_MINUTES", "10"))
 
-    DB_HOST: str = os.getenv("DB_HOST", "")
-    DB_PORT: str = os.getenv("DB_PORT", "5432")
-    DB_NAME: str = os.getenv("DB_NAME", "health_is_all")
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
-    SQLALCHEMY_DATABASE_URL: str = os.getenv("SQLALCHEMY_DATABASE_URL", os.getenv("DATABASE_URL", "")).strip()
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
 
     @property
     def database_url(self) -> str:
-        if self.SQLALCHEMY_DATABASE_URL:
-            return self.SQLALCHEMY_DATABASE_URL
-        if self.DB_HOST:
-            return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        return "sqlite:///./health_is_all.db"
+        return self.DATABASE_URL
 
 
 def utc_now() -> datetime:

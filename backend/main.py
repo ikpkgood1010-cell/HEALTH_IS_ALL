@@ -16,6 +16,7 @@ from backend.database import (
     ActivityLogModel,
     HealthIProfileModel,
     UserExpLogModel,
+    database_configured,
     get_db,
     init_db,
 )
@@ -106,6 +107,13 @@ def read_root() -> dict:
 @app.get("/healthz")
 def healthz() -> dict:
     return {"status": "ok", "service": "HEALTH IS ALL API"}
+
+
+@app.get("/readyz")
+def readyz() -> dict:
+    if not database_configured():
+        return {"status": "not_ready", "database": "not_configured"}
+    return {"status": "ready", "database": "configured"}
 
 
 @app.post("/api/v1/health/record", response_model=HealthRecordResponse)

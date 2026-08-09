@@ -8,9 +8,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.config import settings, utc_now
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, pool_pre_ping=True, future=True, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, future=True)
+engine = None
+SessionLocal = None
+if settings.database_url:
+    engine = create_engine(settings.database_url, pool_pre_ping=True, future=True, connect_args={"sslmode": "require"})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, future=True)
 Base = declarative_base()
 
 
@@ -77,11 +79,21 @@ class ActivityLogModel(Base):
     logged_at = Column(DateTime, default=utc_now, index=True)
 
 
-def init_db() -> None:
+def init_db() -> bool:
+    if engine is None:
+        return False
     Base.metadata.create_all(bind=engine)
+    return True
+
+
+def database_configured() -> bool:
+    return engine is not None
 
 
 def get_db() -> Generator:
+    if SessionLocal is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="database is not configured")
     db = SessionLocal()
     try:
         yield db
