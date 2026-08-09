@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: health-is-all-api
+    runtime: docker
+    region: singapore
+    plan: free
+    branch: main
+    healthCheckPath: /healthz
