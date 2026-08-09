@@ -1,0 +1,18 @@
+# Local environment configuration (keep the documented template trackable).
+.env
+.env.*
+!.env.example
+
+# Flutter/Dart generated output.
+.dart_tool/
+build/
+
+# Python generated output.
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Test, OS, and local diagnostic output.
+coverage/
+.DS_Store
+*.log
