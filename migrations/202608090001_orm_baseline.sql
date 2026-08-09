@@ -1,0 +1,5 @@
+-- PostgreSQL ORM baseline. Apply only after approved baseline registration.
+CREATE TABLE health_i_profiles (health_i_id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) UNIQUE NOT NULL, nickname VARCHAR(50), level INTEGER, current_exp INTEGER, equipped_skin_id VARCHAR(50), emotion_state VARCHAR(30), created_at TIMESTAMP, updated_at TIMESTAMP);
+CREATE TABLE user_exp_logs (log_id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, action_type VARCHAR(50) NOT NULL, exp_gained INTEGER NOT NULL, daily_accumulated_exp INTEGER NOT NULL, created_at TIMESTAMP);
+CREATE TABLE meal_logs (meal_id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, meal_type VARCHAR(20) NOT NULL, calories DOUBLE PRECISION NOT NULL, carbs DOUBLE PRECISION, protein DOUBLE PRECISION, fat DOUBLE PRECISION, logged_at TIMESTAMP);
+CREATE TABLE activity_logs (activity_id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, record_type VARCHAR(30) NOT NULL, value DOUBLE PRECISION NOT NULL, detail_json VARCHAR(2000), exp_gained INTEGER NOT NULL, logged_at TIMESTAMP);
