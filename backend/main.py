@@ -18,13 +18,12 @@ from backend.database import (
     UserExpLogModel,
     database_configured,
     get_db,
-    init_db,
+    engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
 from backend.models import HealthIStateResponse, HealthRecordRequest, HealthRecordResponse
 from backend.progression_engine import ProgressionEngine
 
-init_db()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -113,7 +112,13 @@ def healthz() -> dict:
 def readyz() -> dict:
     if not database_configured():
         return {"status": "not_ready", "database": "not_configured"}
-    return {"status": "ready", "database": "configured"}
+    try:
+        from sqlalchemy import text
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        return {"status": "not_ready", "database": "unavailable"}
+    return {"status": "ready", "database": "connected"}
 
 
 @app.post("/api/v1/health/record", response_model=HealthRecordResponse)
