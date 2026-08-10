@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -37,3 +37,103 @@ class HealthIStateResponse(BaseModel):
     today_workout_minutes: float = Field(default=0.0)
     today_water_liters: float = Field(default=0.0)
     streak_days: int = Field(default=0)
+
+
+class GameOverviewResponse(BaseModel):
+    hbi_score: float
+    hbi_confidence: str
+    health_breakdown: Dict[str, float]
+    guild_level: int
+    guild_stage_name: str
+    tower_floor: int
+    vitality: int
+    guild_coins: int
+    memory_shards_preview: int
+    environment_type: str
+    environment_message: str
+    reward_multiplier: float
+    offline_cap_hours: int
+    prestige_min_floor: int
+    prestige_cooldown_days: int
+
+
+class AdventureSettleRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class AdventureResponse(BaseModel):
+    adventure_id: str
+    user_id: str
+    window_start: datetime
+    window_end: datetime
+    vitality: int
+    gross_guild_coins: int
+    offline_efficiency: float
+    hbi_score: float
+    claimed: bool
+
+
+class AdventureClaimRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class AdventureClaimResponse(BaseModel):
+    adventure_id: str
+    claim_id: str
+    already_claimed: bool
+    gross_guild_coins: int
+    facility_invested: int
+    guild_coins_received: int
+
+
+class TrainingGroundsResponse(BaseModel):
+    code: str
+    name: str
+    level: int
+    total_invested: int
+    current_level_progress: int
+    next_level_cost: int
+    progress_ratio: float
+    guild_coin_balance: int
+    description: str
+
+
+class RecoveryConditionRequest(BaseModel):
+    sleep_hours: Optional[float] = Field(default=None, alias="sleepHours", ge=0, le=24)
+    condition_score: str = Field(alias="conditionScore")
+
+    model_config = {"populate_by_name": True}
+
+
+class RecoveryWorkoutLogRequest(BaseModel):
+    target_muscle: str = Field(alias="targetMuscle")
+    rpe: int = Field(ge=1, le=10)
+    frequency_per_week: int = Field(default=1, alias="frequencyPerWeek", ge=1)
+    is_beginner: bool = Field(default=False, alias="isBeginner")
+
+    model_config = {"populate_by_name": True}
+
+
+class RecoveryCalculateRequest(BaseModel):
+    user_id: str = Field(alias="userId")
+    performed_at: datetime = Field(alias="performedAt")
+    condition: RecoveryConditionRequest
+    workout_logs: List[RecoveryWorkoutLogRequest] = Field(alias="workoutLogs", min_length=1)
+    age: int = Field(default=30, ge=1, le=120)
+
+    model_config = {"populate_by_name": True}
+
+
+class MuscleRecoveryResponse(BaseModel):
+    target_muscle: str
+    base_recovery_hours: float
+    recommended_recovery_hours: float
+    elapsed_hours: float
+    recovery_percent: float
+    status: str
+    estimated_ready_at: datetime
+
+
+class RecoveryCalculateResponse(BaseModel):
+    user_id: str
+    results: List[MuscleRecoveryResponse]

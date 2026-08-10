@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -21,8 +21,34 @@ from backend.database import (
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
-from backend.models import HealthIStateResponse, HealthRecordRequest, HealthRecordResponse
+from backend.models import (
+    AdventureClaimRequest,
+    AdventureClaimResponse,
+    AdventureResponse,
+    AdventureSettleRequest,
+    GameOverviewResponse,
+    HealthIStateResponse,
+    HealthRecordRequest,
+    HealthRecordResponse,
+    RecoveryCalculateRequest,
+    RecoveryCalculateResponse,
+    TrainingGroundsResponse,
+)
+from backend.game_balance_engine import build_game_overview
+from backend.adventure_service import (
+    AdventureNotFoundError,
+    AdventureOwnershipError,
+    adventure_window,
+    claim_adventure,
+    settle_adventure,
+    training_grounds_status,
+)
 from backend.progression_engine import ProgressionEngine
+from backend.recovery_calculator import (
+    ConditionScore,
+    TargetMuscle,
+    calculate_muscle_recovery,
+)
 
 
 app = FastAPI(
@@ -77,7 +103,10 @@ def _calc_streak_days(db: Session, user_id: str) -> int:
     """오늘부터 거슬러 올라가며 연속으로 활동 기록이 있는 일수를 계산한다."""
     logs = (
         db.query(ActivityLogModel.logged_at)
-        .filter(ActivityLogModel.user_id == user_id)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.record_type.in_(tuple(DAILY_AGGREGATE_MAP)),
+        )
         .order_by(ActivityLogModel.logged_at.desc())
         .all()
     )
@@ -266,3 +295,116 @@ def get_health_i_status(user_id: str, db: Session = Depends(get_db)) -> HealthIS
         today_water_liters=today_water,
         streak_days=streak_days,
     )
+
+
+@app.get("/api/v1/game/overview/{user_id}", response_model=GameOverviewResponse)
+def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOverviewResponse:
+    """Return a read-only game projection from the user's current health data."""
+    status = get_health_i_status(user_id, db)
+    overview = build_game_overview(
+        level=status.level,
+        current_exp=status.current_exp,
+        calories=status.today_consumed_calories,
+        target_calories=2000,
+        workout_minutes=status.today_workout_minutes,
+        target_workout_minutes=45,
+        water_liters=status.today_water_liters,
+        target_water_liters=2.0,
+        streak_days=status.streak_days,
+    )
+    return GameOverviewResponse(**overview.to_dict())
+
+
+@app.post("/api/v1/game/adventures/settle", response_model=AdventureResponse)
+def settle_automatic_adventure(
+    request: AdventureSettleRequest,
+    db: Session = Depends(get_db),
+) -> AdventureResponse:
+    """Settle one deterministic automatic adventure per 12-hour UTC window."""
+    window_start, window_end = adventure_window(utc_now())
+    window_logs = db.query(ActivityLogModel).filter(
+        ActivityLogModel.user_id == request.user_id,
+        ActivityLogModel.record_type.in_(tuple(DAILY_AGGREGATE_MAP)),
+        ActivityLogModel.logged_at >= window_start,
+        ActivityLogModel.logged_at < window_end,
+    ).all()
+    totals = {"calories": 0.0, "minutes": 0.0, "liters": 0.0}
+    for log in window_logs:
+        totals[DAILY_AGGREGATE_MAP[log.record_type]] += log.value
+
+    profile = db.query(HealthIProfileModel).filter(
+        HealthIProfileModel.user_id == request.user_id
+    ).first()
+    overview = build_game_overview(
+        level=profile.level if profile else 1,
+        current_exp=profile.current_exp if profile else 0,
+        calories=totals["calories"],
+        target_calories=1000,
+        workout_minutes=totals["minutes"],
+        target_workout_minutes=22.5,
+        water_liters=totals["liters"],
+        target_water_liters=1.0,
+        streak_days=_calc_streak_days(db, request.user_id),
+    )
+    result = settle_adventure(
+        db,
+        user_id=request.user_id,
+        vitality=overview.vitality,
+        hbi_score=overview.hbi_score,
+        guild_coins=overview.guild_coins,
+    )
+    return AdventureResponse(**result)
+
+
+@app.post(
+    "/api/v1/game/adventures/{adventure_id}/claim",
+    response_model=AdventureClaimResponse,
+)
+def claim_automatic_adventure(
+    adventure_id: str,
+    request: AdventureClaimRequest,
+    db: Session = Depends(get_db),
+) -> AdventureClaimResponse:
+    """Claim a settled adventure exactly once, even when a request is retried."""
+    try:
+        result = claim_adventure(db, user_id=request.user_id, adventure_id=adventure_id)
+    except AdventureNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Adventure not found") from exc
+    except AdventureOwnershipError as exc:
+        raise HTTPException(status_code=403, detail="Adventure belongs to another user") from exc
+    return AdventureClaimResponse(**result)
+
+
+@app.get(
+    "/api/v1/game/facilities/training-grounds/{user_id}",
+    response_model=TrainingGroundsResponse,
+)
+def get_training_grounds(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> TrainingGroundsResponse:
+    return TrainingGroundsResponse(**training_grounds_status(db, user_id=user_id))
+
+
+@app.post("/api/v1/recovery/calculate", response_model=RecoveryCalculateResponse)
+def calculate_recovery(
+    request: RecoveryCalculateRequest,
+) -> RecoveryCalculateResponse:
+    """Calculate recovery without writing health or game data."""
+    try:
+        condition = ConditionScore(request.condition.condition_score)
+        results = [
+            calculate_muscle_recovery(
+                target_muscle=TargetMuscle(log.target_muscle),
+                rpe=log.rpe,
+                condition_score=condition,
+                frequency_per_week=log.frequency_per_week,
+                is_beginner=log.is_beginner,
+                age=request.age,
+                performed_at=request.performed_at,
+            ).to_dict()
+            for log in request.workout_logs
+        ]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return RecoveryCalculateResponse(user_id=request.user_id, results=results)

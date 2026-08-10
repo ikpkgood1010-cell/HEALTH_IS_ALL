@@ -37,6 +37,11 @@ class ApiDataProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _lastError;
+  AdventureState? _adventure;
+  AdventureClaimResult? _lastAdventureClaim;
+  TrainingGroundsStatus? _trainingGrounds;
+  bool _isGuildLoading = false;
+  String? _guildError;
 
   String get healthIName => _healthIName;
   int get level => _level;
@@ -56,6 +61,11 @@ class ApiDataProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get lastError => _lastError;
+  AdventureState? get adventure => _adventure;
+  AdventureClaimResult? get lastAdventureClaim => _lastAdventureClaim;
+  TrainingGroundsStatus? get trainingGrounds => _trainingGrounds;
+  bool get isGuildLoading => _isGuildLoading;
+  String? get guildError => _guildError;
 
   /// 서버에서 현재 상태를 불러와 화면에 반영한다.
   /// 화면 진입 시(initState) 호출하도록 설계되었다.
@@ -84,6 +94,52 @@ class ApiDataProvider extends ChangeNotifier {
     }
   }
 
+  /// Loads the current automatic adventure and the persistent training ground.
+  Future<void> refreshGuild() async {
+    _isGuildLoading = true;
+    _guildError = null;
+    notifyListeners();
+    try {
+      final results = await Future.wait<Object>([
+        _api.settleAdventure(userId),
+        _api.fetchTrainingGrounds(userId),
+      ]);
+      _adventure = results[0] as AdventureState;
+      _trainingGrounds = results[1] as TrainingGroundsStatus;
+    } catch (_) {
+      _guildError = '길드 서버와 연결하지 못했어요. 건강 기반 미리보기는 계속 볼 수 있어요.';
+    } finally {
+      _isGuildLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Claims a settled result once. Server idempotency protects repeated taps.
+  Future<AdventureClaimResult?> claimAdventure() async {
+    final current = _adventure;
+    if (current == null || current.claimed || _isGuildLoading) return null;
+
+    _isGuildLoading = true;
+    _guildError = null;
+    notifyListeners();
+    try {
+      final result = await _api.claimAdventure(
+        userId: userId,
+        adventureId: current.adventureId,
+      );
+      _lastAdventureClaim = result;
+      _adventure = current.copyWith(claimed: true);
+      _trainingGrounds = await _api.fetchTrainingGrounds(userId);
+      return result;
+    } catch (_) {
+      _guildError = '보상을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
+      return null;
+    } finally {
+      _isGuildLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logMeal(int calories, String mealType) async {
     await _recordActivity(
       recordType: 'meal_log',
@@ -93,11 +149,27 @@ class ApiDataProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> logWorkout(int minutes, int burnedCalories) async {
+  Future<void> logWorkout(
+    int minutes,
+    int burnedCalories, {
+    String? exerciseCategoryGroup,
+    String? exerciseCategory,
+    String? intensityLevel,
+    int? rpe,
+    String? conditionScore,
+  }) async {
     await _recordActivity(
       recordType: 'workout_log',
       value: minutes.toDouble(),
-      detailData: {'burned_calories': burnedCalories},
+      detailData: {
+        'burned_calories': burnedCalories,
+        if (exerciseCategoryGroup != null)
+          'exercise_category_group': exerciseCategoryGroup,
+        if (exerciseCategory != null) 'exercise_category': exerciseCategory,
+        if (intensityLevel != null) 'intensity_level': intensityLevel,
+        if (rpe != null) 'rpe': rpe,
+        if (conditionScore != null) 'condition_score': conditionScore,
+      },
       localApply: () => _workoutMinutes += minutes,
     );
   }

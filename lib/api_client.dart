@@ -50,14 +50,16 @@ class HealthIApiClient {
       );
     }
 
-    final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final json =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     return HealthRecordResult.fromJson(json);
   }
 
   /// GET /api/v1/health-i/status/{user_id}
   Future<HealthIStatus> fetchHealthIStatus(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/health-i/status/$userId');
-    final response = await _client.get(uri).timeout(const Duration(seconds: 10));
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
       throw HealthIApiException(
@@ -66,8 +68,73 @@ class HealthIApiClient {
       );
     }
 
-    final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final json =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     return HealthIStatus.fromJson(json);
+  }
+
+  /// Settles or returns the current 12-hour automatic adventure.
+  Future<AdventureState> settleAdventure(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/adventures/settle');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'user_id': userId}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '자동 모험 정산 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return AdventureState.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// Claims one adventure. The server safely returns the original claim on retry.
+  Future<AdventureClaimResult> claimAdventure({
+    required String userId,
+    required String adventureId,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/game/adventures/$adventureId/claim',
+    );
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'user_id': userId}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '모험 보상 수령 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return AdventureClaimResult.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  Future<TrainingGroundsStatus> fetchTrainingGrounds(String userId) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/game/facilities/training-grounds/$userId',
+    );
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '훈련장 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return TrainingGroundsStatus.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
   }
 
   void dispose() {
@@ -141,11 +208,122 @@ class HealthIStatus {
       emotionState: json['emotion_state'] as String? ?? '평온함',
       dialogue: json['dialogue'] as String? ?? '',
       equippedSkin: json['equipped_skin'] as String? ?? 'default_skin',
-      lastUpdated: DateTime.tryParse(json['last_updated'] as String? ?? '') ?? DateTime.now(),
-      todayConsumedCalories: (json['today_consumed_calories'] as num?)?.toDouble() ?? 0.0,
-      todayWorkoutMinutes: (json['today_workout_minutes'] as num?)?.toDouble() ?? 0.0,
+      lastUpdated: DateTime.tryParse(json['last_updated'] as String? ?? '') ??
+          DateTime.now(),
+      todayConsumedCalories:
+          (json['today_consumed_calories'] as num?)?.toDouble() ?? 0.0,
+      todayWorkoutMinutes:
+          (json['today_workout_minutes'] as num?)?.toDouble() ?? 0.0,
       todayWaterLiters: (json['today_water_liters'] as num?)?.toDouble() ?? 0.0,
       streakDays: (json['streak_days'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class AdventureState {
+  final String adventureId;
+  final DateTime windowStart;
+  final DateTime windowEnd;
+  final int vitality;
+  final int grossGuildCoins;
+  final double offlineEfficiency;
+  final double hbiScore;
+  final bool claimed;
+
+  const AdventureState({
+    required this.adventureId,
+    required this.windowStart,
+    required this.windowEnd,
+    required this.vitality,
+    required this.grossGuildCoins,
+    required this.offlineEfficiency,
+    required this.hbiScore,
+    required this.claimed,
+  });
+
+  factory AdventureState.fromJson(Map<String, dynamic> json) {
+    return AdventureState(
+      adventureId: json['adventure_id'] as String? ?? '',
+      windowStart: DateTime.parse(json['window_start'] as String),
+      windowEnd: DateTime.parse(json['window_end'] as String),
+      vitality: (json['vitality'] as num?)?.toInt() ?? 0,
+      grossGuildCoins: (json['gross_guild_coins'] as num?)?.toInt() ?? 0,
+      offlineEfficiency: (json['offline_efficiency'] as num?)?.toDouble() ?? .7,
+      hbiScore: (json['hbi_score'] as num?)?.toDouble() ?? 0,
+      claimed: json['claimed'] as bool? ?? false,
+    );
+  }
+
+  AdventureState copyWith({bool? claimed}) => AdventureState(
+        adventureId: adventureId,
+        windowStart: windowStart,
+        windowEnd: windowEnd,
+        vitality: vitality,
+        grossGuildCoins: grossGuildCoins,
+        offlineEfficiency: offlineEfficiency,
+        hbiScore: hbiScore,
+        claimed: claimed ?? this.claimed,
+      );
+}
+
+class AdventureClaimResult {
+  final String adventureId;
+  final String claimId;
+  final bool alreadyClaimed;
+  final int grossGuildCoins;
+  final int facilityInvested;
+  final int guildCoinsReceived;
+
+  const AdventureClaimResult({
+    required this.adventureId,
+    required this.claimId,
+    required this.alreadyClaimed,
+    required this.grossGuildCoins,
+    required this.facilityInvested,
+    required this.guildCoinsReceived,
+  });
+
+  factory AdventureClaimResult.fromJson(Map<String, dynamic> json) {
+    return AdventureClaimResult(
+      adventureId: json['adventure_id'] as String? ?? '',
+      claimId: json['claim_id'] as String? ?? '',
+      alreadyClaimed: json['already_claimed'] as bool? ?? false,
+      grossGuildCoins: (json['gross_guild_coins'] as num?)?.toInt() ?? 0,
+      facilityInvested: (json['facility_invested'] as num?)?.toInt() ?? 0,
+      guildCoinsReceived: (json['guild_coins_received'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class TrainingGroundsStatus {
+  final int level;
+  final int totalInvested;
+  final int currentLevelProgress;
+  final int nextLevelCost;
+  final double progressRatio;
+  final int guildCoinBalance;
+  final String description;
+
+  const TrainingGroundsStatus({
+    required this.level,
+    required this.totalInvested,
+    required this.currentLevelProgress,
+    required this.nextLevelCost,
+    required this.progressRatio,
+    required this.guildCoinBalance,
+    required this.description,
+  });
+
+  factory TrainingGroundsStatus.fromJson(Map<String, dynamic> json) {
+    return TrainingGroundsStatus(
+      level: (json['level'] as num?)?.toInt() ?? 1,
+      totalInvested: (json['total_invested'] as num?)?.toInt() ?? 0,
+      currentLevelProgress:
+          (json['current_level_progress'] as num?)?.toInt() ?? 0,
+      nextLevelCost: (json['next_level_cost'] as num?)?.toInt() ?? 100,
+      progressRatio: (json['progress_ratio'] as num?)?.toDouble() ?? 0,
+      guildCoinBalance: (json['guild_coin_balance'] as num?)?.toInt() ?? 0,
+      description: json['description'] as String? ?? '',
     );
   }
 }

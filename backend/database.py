@@ -11,7 +11,17 @@ from backend.config import settings, utc_now
 engine = None
 SessionLocal = None
 if settings.database_url:
-    engine = create_engine(settings.database_url, pool_pre_ping=True, future=True, connect_args={"sslmode": "require"})
+    connect_args = (
+        {"sslmode": "require"}
+        if settings.database_url.startswith(("postgresql://", "postgres://"))
+        else {"check_same_thread": False}
+    )
+    engine = create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        future=True,
+        connect_args=connect_args,
+    )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, future=True)
 Base = declarative_base()
 
