@@ -12,6 +12,7 @@ build/
 __pycache__/
 *.pyc
 .venv/
+local-migration-readiness*/
 
 # Test, OS, and local diagnostic output.
 coverage/
