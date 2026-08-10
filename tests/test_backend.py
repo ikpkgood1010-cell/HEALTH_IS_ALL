@@ -77,3 +77,62 @@ def test_calculate_recovery_endpoint(client):
     assert data["user_id"] == "anon_test"
     assert data["results"][0]["recommended_recovery_hours"] == 48.0
     assert data["results"][0]["target_muscle"] == "CHEST"
+
+
+def test_automatic_adventure_is_idempotent_and_claims_once(client):
+    payload = {"user_id": "adventure_test_user"}
+    first = client.post("/api/v1/game/adventures/settle", json=payload)
+    second = client.post("/api/v1/game/adventures/settle", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["adventure_id"] == second.json()["adventure_id"]
+    assert first.json()["claimed"] is False
+
+    adventure_id = first.json()["adventure_id"]
+    first_claim = client.post(
+        f"/api/v1/game/adventures/{adventure_id}/claim",
+        json=payload,
+    )
+    retry_claim = client.post(
+        f"/api/v1/game/adventures/{adventure_id}/claim",
+        json=payload,
+    )
+
+    assert first_claim.status_code == 200
+    assert retry_claim.status_code == 200
+    assert first_claim.json()["claim_id"] == retry_claim.json()["claim_id"]
+    assert first_claim.json()["already_claimed"] is False
+    assert retry_claim.json()["already_claimed"] is True
+    assert (
+        first_claim.json()["guild_coins_received"]
+        + first_claim.json()["facility_invested"]
+        == first_claim.json()["gross_guild_coins"]
+    )
+
+    settled_again = client.post("/api/v1/game/adventures/settle", json=payload)
+    assert settled_again.json()["claimed"] is True
+
+
+def test_training_grounds_reports_facility_and_balance(client):
+    response = client.get(
+        "/api/v1/game/facilities/training-grounds/adventure_test_user"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == "TRAINING_GROUNDS"
+    assert data["name"] == "훈련장"
+    assert data["level"] >= 1
+    assert 0 <= data["progress_ratio"] < 1
+
+
+def test_adventure_claim_rejects_another_user(client):
+    settled = client.post(
+        "/api/v1/game/adventures/settle",
+        json={"user_id": "adventure_owner"},
+    ).json()
+    response = client.post(
+        f"/api/v1/game/adventures/{settled['adventure_id']}/claim",
+        json={"user_id": "different_user"},
+    )
+    assert response.status_code == 403

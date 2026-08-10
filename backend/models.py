@@ -57,6 +57,47 @@ class GameOverviewResponse(BaseModel):
     prestige_cooldown_days: int
 
 
+class AdventureSettleRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class AdventureResponse(BaseModel):
+    adventure_id: str
+    user_id: str
+    window_start: datetime
+    window_end: datetime
+    vitality: int
+    gross_guild_coins: int
+    offline_efficiency: float
+    hbi_score: float
+    claimed: bool
+
+
+class AdventureClaimRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class AdventureClaimResponse(BaseModel):
+    adventure_id: str
+    claim_id: str
+    already_claimed: bool
+    gross_guild_coins: int
+    facility_invested: int
+    guild_coins_received: int
+
+
+class TrainingGroundsResponse(BaseModel):
+    code: str
+    name: str
+    level: int
+    total_invested: int
+    current_level_progress: int
+    next_level_cost: int
+    progress_ratio: float
+    guild_coin_balance: int
+    description: str
+
+
 class RecoveryConditionRequest(BaseModel):
     sleep_hours: Optional[float] = Field(default=None, alias="sleepHours", ge=0, le=24)
     condition_score: str = Field(alias="conditionScore")
