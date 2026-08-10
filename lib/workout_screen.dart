@@ -1,170 +1,224 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'api_data_provider.dart';
 
-/// HEALTH IS ALL - Workout Record & Real-time METs Analytics Screen
-/// Dual-Excellence: 운동 소모 칼로리 정밀 시각화 + '건강이' 피드백 연동
-///
-/// PATCH_009: ApiDataProvider(실제 백엔드 연동)로 전환. home_screen.dart의
-/// 레퍼런스 패턴(async/await + lastError 확인)을 그대로 따랐다.
+import 'api_data_provider.dart';
+import 'app_theme.dart';
+import 'exercise_catalog.dart';
+
 class WorkoutScreen extends StatefulWidget {
-  const WorkoutScreen({Key? key}) : super(key: key);
+  const WorkoutScreen({super.key});
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
 class _WorkoutScreenState extends State<WorkoutScreen> {
-  final _formKey = GlobalKey<FormState>();
-  String _workoutType = '러닝';
+  ExerciseCategoryGroup _group = ExerciseCategoryGroup.cardio;
+  late ExerciseDefinition _exercise;
+  IntensityLevel _intensity = IntensityLevel.high;
   int _durationMinutes = 30;
-  String _intensity = '보통';
+  int _rpe = 6;
+  String _condition = 'NORMAL';
+  bool _saving = false;
 
-  double get _estimatedCalories {
-    double met = 4.0;
-    if (_workoutType == '러닝') met = 8.0;
-    if (_workoutType == '등산') met = 6.5;
-    if (_workoutType == '사이클') met = 6.8;
-    if (_workoutType == '근력운동') met = 5.0;
-
-    final double intensityFactor = _intensity == '강함' ? 1.25 : (_intensity == '가볍게' ? 0.85 : 1.0);
-    return met * 70.0 * (_durationMinutes / 60.0) * intensityFactor;
+  @override
+  void initState() {
+    super.initState();
+    _exercise = _exercisesFor(_group).first;
+    _intensity = _exercise.recommendedIntensity;
   }
 
-  Future<void> _submitWorkoutLog() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+  List<ExerciseDefinition> _exercisesFor(ExerciseCategoryGroup group) =>
+      exerciseCatalog.where((item) => item.group == group).toList();
 
-      final provider = Provider.of<ApiDataProvider>(context, listen: false);
-      await provider.logWorkout(_durationMinutes, _estimatedCalories.toInt());
+  double get _estimatedCalories {
+    final factor = switch (_intensity) {
+      IntensityLevel.low => .85,
+      IntensityLevel.medium => 1.0,
+      IntensityLevel.high => 1.25,
+    };
+    return _exercise.met * 70 * (_durationMinutes / 60) * factor;
+  }
 
-      if (!mounted) return;
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final provider = context.read<ApiDataProvider>();
+    await provider.logWorkout(
+      _durationMinutes,
+      _estimatedCalories.round(),
+      exerciseCategoryGroup: _group.name.toUpperCase(),
+      exerciseCategory: _exercise.code,
+      intensityLevel: intensityCode(_intensity),
+      rpe: _rpe,
+      conditionScore: _condition,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
 
-      if (provider.lastError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.lastError!),
-            backgroundColor: Colors.red.shade400,
-          ),
-        );
-        return;
-      }
-
+    if (provider.lastError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$_durationMinutes분 완수! 50 Exp 획득 및 건강이 활력 상승!'),
-          backgroundColor: Colors.deepOrange.shade600,
-        ),
+        SnackBar(content: Text(provider.lastError!)),
       );
-
-      Navigator.pop(context);
+      return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('운동 기록을 저장했어요.')),
+    );
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final groupExercises = _exercisesFor(_group);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('운동 기록하기', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 1,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(18.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.deepOrange.shade400, Colors.orange.shade300],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      appBar: AppBar(title: const Text('운동 기록하기')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          Card(
+            color: AppColors.primary100,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Text('예상 소모 칼로리', style: AppTypography.captionSm),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${_estimatedCalories.toStringAsFixed(0)} kcal',
+                    style: AppTypography.displayLg
+                        .copyWith(color: AppColors.primary700),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Text('예상 운동 소모 칼로리', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_estimatedCalories.toStringAsFixed(0)} kcal',
-                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$_workoutType · $_intensity · METs 기반 자동 연산',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text('운동 세부 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _workoutType,
-                decoration: InputDecoration(
-                  labelText: '운동 종목',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: ['러닝', '걷기', '등산', '사이클', '근력운동'].map((type) {
-                  return DropdownMenuItem(value: type, child: Text(type));
-                }).toList(),
-                onChanged: (val) => setState(() => _workoutType = val!),
-              ),
-              const SizedBox(height: 16),
-              Text('운동 시간: $_durationMinutes분', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Slider(
-                value: _durationMinutes.toDouble(),
-                min: 10,
-                max: 120,
-                divisions: 22,
-                label: '$_durationMinutes분',
-                onChanged: (val) => setState(() => _durationMinutes = val.round()),
-              ),
-              const SizedBox(height: 12),
-              const Text('수행 강도', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: ['가볍게', '보통', '강함'].map((level) {
-                  final isSelected = _intensity == level;
-                  return ChoiceChip(
-                    label: Text(level),
-                    selected: isSelected,
-                    selectedColor: Colors.deepOrange.shade100,
-                    onSelected: (selected) {
-                      if (selected) setState(() => _intensity = level);
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _submitWorkoutLog,
-                  icon: const Icon(Icons.directions_run, color: Colors.white),
-                  label: const Text('운동 기록 완료 및 50 Exp 받기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_exercise.label} · ${intensityLabel(_intensity)} · METs 기준',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.captionSm,
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 20),
+          DropdownButtonFormField<ExerciseCategoryGroup>(
+            initialValue: _group,
+            decoration: const InputDecoration(
+              labelText: '1. 운동 대분류',
+              border: OutlineInputBorder(),
+            ),
+            items: ExerciseCategoryGroup.values
+                .map((group) => DropdownMenuItem(
+                      value: group,
+                      child: Text(groupLabel(group)),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _group = value;
+                _exercise = _exercisesFor(value).first;
+                _intensity = _exercise.recommendedIntensity;
+              });
+            },
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<ExerciseDefinition>(
+            key: ValueKey(_group),
+            initialValue: _exercise,
+            decoration: const InputDecoration(
+              labelText: '2. 운동 종목',
+              border: OutlineInputBorder(),
+            ),
+            items: groupExercises
+                .map((exercise) => DropdownMenuItem(
+                      value: exercise,
+                      child: Text(exercise.label),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _exercise = value;
+                _intensity = value.recommendedIntensity;
+              });
+            },
+          ),
+          const SizedBox(height: 22),
+          Text('3. 수행 강도', style: AppTypography.titleMd),
+          const SizedBox(height: 8),
+          SegmentedButton<IntensityLevel>(
+            segments: IntensityLevel.values
+                .map((level) => ButtonSegment(
+                      value: level,
+                      label: Text(intensityLabel(level)),
+                    ))
+                .toList(),
+            selected: {_intensity},
+            onSelectionChanged: (selection) =>
+                setState(() => _intensity = selection.first),
+          ),
+          const SizedBox(height: 22),
+          Text('운동 시간: $_durationMinutes분', style: AppTypography.titleMd),
+          Slider(
+            value: _durationMinutes.toDouble(),
+            min: 10,
+            max: 120,
+            divisions: 22,
+            label: '$_durationMinutes분',
+            onChanged: (value) =>
+                setState(() => _durationMinutes = value.round()),
+          ),
+          const SizedBox(height: 14),
+          Text('체감 강도(RPE): $_rpe / 10', style: AppTypography.titleMd),
+          Slider(
+            value: _rpe.toDouble(),
+            min: 1,
+            max: 10,
+            divisions: 9,
+            label: '$_rpe',
+            onChanged: (value) => setState(() => _rpe = value.round()),
+          ),
+          Text(_rpeGuide(_rpe), style: AppTypography.captionSm),
+          const SizedBox(height: 22),
+          Text('오늘의 컨디션', style: AppTypography.titleMd),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const {
+              'EXCELLENT': '⚡ 최상',
+              'GOOD': '😊 좋음',
+              'NORMAL': '😐 보통',
+              'POOR': '😴 피곤',
+              'CRITICAL': '⚠️ 경고',
+            }
+                .entries
+                .map((entry) => ChoiceChip(
+                      label: Text(entry.value),
+                      selected: _condition == entry.key,
+                      onSelected: (_) => setState(() => _condition = entry.key),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 28),
+          ElevatedButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(_saving ? '저장 중...' : '운동 기록 저장'),
+          ),
+        ],
       ),
     );
   }
+}
+
+String _rpeGuide(int rpe) {
+  if (rpe <= 4) return '가벼움 · 편안하게 대화할 수 있어요.';
+  if (rpe <= 7) return '적당함 · 숨은 차지만 짧은 대화가 가능해요.';
+  if (rpe <= 9) return '힘듦 · 1~2회 정도만 더 할 수 있어요.';
+  return '한계 · 무리하지 말고 회복 시간을 충분히 확보하세요.';
 }

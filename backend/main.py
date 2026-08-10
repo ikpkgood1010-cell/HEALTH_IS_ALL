@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -21,8 +21,21 @@ from backend.database import (
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
-from backend.models import HealthIStateResponse, HealthRecordRequest, HealthRecordResponse
+from backend.models import (
+    GameOverviewResponse,
+    HealthIStateResponse,
+    HealthRecordRequest,
+    HealthRecordResponse,
+    RecoveryCalculateRequest,
+    RecoveryCalculateResponse,
+)
+from backend.game_balance_engine import build_game_overview
 from backend.progression_engine import ProgressionEngine
+from backend.recovery_calculator import (
+    ConditionScore,
+    TargetMuscle,
+    calculate_muscle_recovery,
+)
 
 
 app = FastAPI(
@@ -266,3 +279,45 @@ def get_health_i_status(user_id: str, db: Session = Depends(get_db)) -> HealthIS
         today_water_liters=today_water,
         streak_days=streak_days,
     )
+
+
+@app.get("/api/v1/game/overview/{user_id}", response_model=GameOverviewResponse)
+def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOverviewResponse:
+    """Return a read-only game projection from the user's current health data."""
+    status = get_health_i_status(user_id, db)
+    overview = build_game_overview(
+        level=status.level,
+        current_exp=status.current_exp,
+        calories=status.today_consumed_calories,
+        target_calories=2000,
+        workout_minutes=status.today_workout_minutes,
+        target_workout_minutes=45,
+        water_liters=status.today_water_liters,
+        target_water_liters=2.0,
+        streak_days=status.streak_days,
+    )
+    return GameOverviewResponse(**overview.to_dict())
+
+
+@app.post("/api/v1/recovery/calculate", response_model=RecoveryCalculateResponse)
+def calculate_recovery(
+    request: RecoveryCalculateRequest,
+) -> RecoveryCalculateResponse:
+    """Calculate recovery without writing health or game data."""
+    try:
+        condition = ConditionScore(request.condition.condition_score)
+        results = [
+            calculate_muscle_recovery(
+                target_muscle=TargetMuscle(log.target_muscle),
+                rpe=log.rpe,
+                condition_score=condition,
+                frequency_per_week=log.frequency_per_week,
+                is_beginner=log.is_beginner,
+                age=request.age,
+                performed_at=request.performed_at,
+            ).to_dict()
+            for log in request.workout_logs
+        ]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return RecoveryCalculateResponse(user_id=request.user_id, results=results)

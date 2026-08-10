@@ -1,382 +1,275 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app_theme.dart';
 
-/// ============================================================================
-/// Settings & Profile Screen Implementation (v1.0)
-/// Based on: Component_Catalog.md & Screen_Specification_Master.md
-/// ============================================================================
+class UserPreferences {
+  final int targetCalories;
+  final int targetWaterMl;
+  final int targetExerciseMinutes;
+  final bool notificationsEnabled;
+  final bool largeTextEnabled;
+  final bool reducedMotionEnabled;
 
-class UserProfileModel {
-final String nickname;
-final String email;
-final int targetCalories;
-final int targetWaterMl;
-final int targetExerciseMinutes;
-final bool pushNotificationsEnabled;
-final bool autoSyncEnabled;
-final DateTime? lastSyncedAt;
+  const UserPreferences({
+    this.targetCalories = 2000,
+    this.targetWaterMl = 2000,
+    this.targetExerciseMinutes = 45,
+    this.notificationsEnabled = true,
+    this.largeTextEnabled = false,
+    this.reducedMotionEnabled = false,
+  });
 
-UserProfileModel({
-required this.nickname,
-required this.email,
-required this.targetCalories,
-required this.targetWaterMl,
-required this.targetExerciseMinutes,
-this.pushNotificationsEnabled = true,
-this.autoSyncEnabled = true,
-this.lastSyncedAt,
-});
+  UserPreferences copyWith({
+    int? targetCalories,
+    int? targetWaterMl,
+    int? targetExerciseMinutes,
+    bool? notificationsEnabled,
+    bool? largeTextEnabled,
+    bool? reducedMotionEnabled,
+  }) {
+    return UserPreferences(
+      targetCalories: targetCalories ?? this.targetCalories,
+      targetWaterMl: targetWaterMl ?? this.targetWaterMl,
+      targetExerciseMinutes:
+          targetExerciseMinutes ?? this.targetExerciseMinutes,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      largeTextEnabled: largeTextEnabled ?? this.largeTextEnabled,
+      reducedMotionEnabled: reducedMotionEnabled ?? this.reducedMotionEnabled,
+    );
+  }
+}
 
-UserProfileModel copyWith({
-String? nickname,
-String? email,
-int? targetCalories,
-int? targetWaterMl,
-int? targetExerciseMinutes,
-bool? pushNotificationsEnabled,
-bool? autoSyncEnabled,
-DateTime? lastSyncedAt,
-}) {
-return UserProfileModel(
-nickname: nickname ?? this.nickname,
-email: email ?? this.email,
-targetCalories: targetCalories ?? this.targetCalories,
-targetWaterMl: targetWaterMl ?? this.targetWaterMl,
-targetExerciseMinutes: targetExerciseMinutes ?? this.targetExerciseMinutes,
-pushNotificationsEnabled: pushNotificationsEnabled ?? this.pushNotificationsEnabled,
-autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
-lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+class UserPreferencesNotifier extends StateNotifier<UserPreferences> {
+  UserPreferencesNotifier() : super(const UserPreferences());
+
+  void updateTargets({int? calories, int? water, int? exercise}) {
+    state = state.copyWith(
+      targetCalories: calories,
+      targetWaterMl: water,
+      targetExerciseMinutes: exercise,
+    );
+  }
+
+  void setNotifications(bool value) =>
+      state = state.copyWith(notificationsEnabled: value);
+  void setLargeText(bool value) =>
+      state = state.copyWith(largeTextEnabled: value);
+  void setReducedMotion(bool value) =>
+      state = state.copyWith(reducedMotionEnabled: value);
+}
+
+final userPreferencesProvider =
+    StateNotifierProvider<UserPreferencesNotifier, UserPreferences>(
+  (_) => UserPreferencesNotifier(),
 );
-}
-}
-
-class UserProfileNotifier extends StateNotifier<UserProfileModel> {
-UserProfileNotifier()
-: super(
-UserProfileModel(
-nickname: '러너킴',
-email: 'runner.kim@example.com',
-targetCalories: 2000,
-targetWaterMl: 2000,
-targetExerciseMinutes: 45,
-lastSyncedAt: DateTime.now().subtract(const Duration(minutes: 15)),
-),
-);
-
-void updateTargets({int? calories, int? water, int? exercise}) {
-state = state.copyWith(
-targetCalories: calories,
-targetWaterMl: water,
-targetExerciseMinutes: exercise,
-);
-}
-
-void toggleNotifications(bool value) {
-state = state.copyWith(pushNotificationsEnabled: value);
-}
-
-void toggleAutoSync(bool value) {
-state = state.copyWith(autoSyncEnabled: value);
-}
-
-void triggerManualSync() {
-state = state.copyWith(lastSyncedAt: DateTime.now());
-}
-}
-
-final userProfileProvider =
-StateNotifierProvider<UserProfileNotifier, UserProfileModel>((ref) {
-return UserProfileNotifier();
-});
 
 class SettingsProfileScreen extends ConsumerWidget {
-const SettingsProfileScreen({Key? key}) : super(key: key);
+  const SettingsProfileScreen({super.key});
 
-@override
-Widget build(BuildContext context, WidgetRef ref) {
-final profile = ref.watch(userProfileProvider);
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferences = ref.watch(userPreferencesProvider);
 
-return Scaffold(
-appBar: AppBar(
-title: const Text('마이페이지 & 설정'),
-),
-body: SingleChildScrollView(
-physics: const BouncingScrollPhysics(),
-padding: const EdgeInsets.all(AppSpacing.md),
-child: Column(
-crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-// User Profile Header Card
-_buildProfileHeader(profile),
-const SizedBox(height: AppSpacing.lg),
-
-// Daily Target Management
-_buildSectionTitle('🎯 일일 목표 설정'),
-const SizedBox(height: AppSpacing.xs),
-_buildTargetTile(
-context,
-ref,
-icon: Icons.water_drop,
-iconColor: Colors.cyan,
-title: '목표 수분량',
-valueText: '${profile.targetWaterMl} ml',
-onTap: () => _showEditTargetDialog(
-context,
-ref,
-title: '목표 수분량 변경',
-currentValue: profile.targetWaterMl,
-unit: 'ml',
-onSave: (val) => ref
-.read(userProfileProvider.notifier)
-.updateTargets(water: val),
-),
-),
-_buildTargetTile(
-context,
-ref,
-icon: Icons.timer,
-iconColor: Colors.green,
-title: '목표 운동 시간',
-valueText: '${profile.targetExerciseMinutes} 분',
-onTap: () => _showEditTargetDialog(
-context,
-ref,
-title: '목표 운동시간 변경',
-currentValue: profile.targetExerciseMinutes,
-unit: '분',
-onSave: (val) => ref
-.read(userProfileProvider.notifier)
-.updateTargets(exercise: val),
-),
-),
-const SizedBox(height: AppSpacing.lg),
-
-// Notifications & Sync Controls
-_buildSectionTitle('🔔 알림 및 동기화'),
-const SizedBox(height: AppSpacing.xs),
-Card(
-child: Column(
-children: [
-SwitchListTile(
-title: const Text('루틴 알림 받기', style: AppTypography.bodyMd),
-subtitle: const Text('설정한 루틴 시간에 맞추어 푸시 알림을 전송합니다.',
-style: AppTypography.captionSm),
-activeColor: AppColors.primary500,
-value: profile.pushNotificationsEnabled,
-onChanged: (val) {
-ref
-.read(userProfileProvider.notifier)
-.toggleNotifications(val);
-},
-),
-const Divider(height: 1),
-SwitchListTile(
-title: const Text('네트워크 자동 동기화', style: AppTypography.bodyMd),
-subtitle: const Text('와이파이 연결 시 오프라인 기록을 자동 업로드합니다.',
-style: AppTypography.captionSm),
-activeColor: AppColors.primary500,
-value: profile.autoSyncEnabled,
-onChanged: (val) {
-ref.read(userProfileProvider.notifier).toggleAutoSync(val);
-},
-),
-const Divider(height: 1),
-ListTile(
-leading: const Icon(Icons.sync, color: AppColors.primary500),
-title: const Text('지금 즉시 동기화', style: AppTypography.bodyMd),
-subtitle: Text(
-profile.lastSyncedAt != null
-? '최종 동기화: ${_formatTime(profile.lastSyncedAt!)}'
-: '동기화 기록 없음',
-style: AppTypography.captionSm,
-),
-trailing: TextButton(
-onPressed: () {
-ref.read(userProfileProvider.notifier).triggerManualSync();
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('동기화가 완료되었습니다.')),
-);
-},
-child: const Text('동기화'),
-),
-),
- ],
-),
-),
-const SizedBox(height: AppSpacing.lg),
-
-// App Meta & Account
-_buildSectionTitle('ℹ️ 앱 정보 및 계정'),
-const SizedBox(height: AppSpacing.xs),
-Card(
-child: Column(
-children: [
-const ListTile(
-title: Text('앱 버전', style: AppTypography.bodyMd),
-trailing: Text('v1.0.0 (Build 102)', style: AppTypography.captionSm),
-),
-const Divider(height: 1),
-ListTile(
-title: const Text('로그아웃',
-style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-onTap: () => _showLogoutDialog(context),
-),
- ],
-),
-),
-],
-),
-),
-);
+    return Scaffold(
+      appBar: AppBar(title: const Text('마이')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          Card(
+            color: AppColors.primary100,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppColors.primary500,
+                    child: Icon(Icons.person_rounded,
+                        color: Colors.white, size: 30),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('익명 모험가', style: AppTypography.titleMd),
+                        const SizedBox(height: 4),
+                        Text(
+                          '로그인 없이 이 기기의 익명 ID로 기록 중',
+                          style: AppTypography.captionSm,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('건강 목표', style: AppTypography.titleMd),
+          const SizedBox(height: 8),
+          _TargetTile(
+            icon: Icons.restaurant_rounded,
+            title: '하루 섭취 목표',
+            value: '${preferences.targetCalories} kcal',
+            onTap: () => _editTarget(
+              context,
+              title: '하루 섭취 목표',
+              value: preferences.targetCalories,
+              unit: 'kcal',
+              onSave: (value) => ref
+                  .read(userPreferencesProvider.notifier)
+                  .updateTargets(calories: value),
+            ),
+          ),
+          _TargetTile(
+            icon: Icons.water_drop_rounded,
+            title: '하루 수분 목표',
+            value: '${preferences.targetWaterMl} ml',
+            onTap: () => _editTarget(
+              context,
+              title: '하루 수분 목표',
+              value: preferences.targetWaterMl,
+              unit: 'ml',
+              onSave: (value) => ref
+                  .read(userPreferencesProvider.notifier)
+                  .updateTargets(water: value),
+            ),
+          ),
+          _TargetTile(
+            icon: Icons.directions_run_rounded,
+            title: '하루 운동 목표',
+            value: '${preferences.targetExerciseMinutes}분',
+            onTap: () => _editTarget(
+              context,
+              title: '하루 운동 목표',
+              value: preferences.targetExerciseMinutes,
+              unit: '분',
+              onSave: (value) => ref
+                  .read(userPreferencesProvider.notifier)
+                  .updateTargets(exercise: value),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('알림 및 접근성', style: AppTypography.titleMd),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('건강 루틴 알림'),
+                  subtitle: const Text('설정한 기록 시간을 부드럽게 알려드려요.'),
+                  value: preferences.notificationsEnabled,
+                  onChanged: ref
+                      .read(userPreferencesProvider.notifier)
+                      .setNotifications,
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('큰 글자 우선'),
+                  subtitle: const Text('중요한 수치와 안내 문구를 더 크게 표시해요.'),
+                  value: preferences.largeTextEnabled,
+                  onChanged:
+                      ref.read(userPreferencesProvider.notifier).setLargeText,
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('움직임 줄이기'),
+                  subtitle: const Text('게임 화면의 장식 애니메이션을 최소화해요.'),
+                  value: preferences.reducedMotionEnabled,
+                  onChanged: ref
+                      .read(userPreferencesProvider.notifier)
+                      .setReducedMotion,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '익명 MVP에서는 계정 연결과 로그아웃을 제공하지 않습니다. '
+                '소셜 로그인은 데이터 이전·복구 정책이 준비된 뒤 추가합니다.',
+                style: AppTypography.captionSm,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-Widget _buildProfileHeader(UserProfileModel profile) {
-return Card(
-color: AppColors.primary100,
-child: Padding(
-padding: const EdgeInsets.all(AppSpacing.md),
-child: Row(
-children: [
-CircleAvatar(
-radius: 32,
-backgroundColor: AppColors.primary500,
-child: Text(
-profile.nickname[0],
-style: const TextStyle(
-fontSize: 24,
-color: Colors.white,
-fontWeight: FontWeight.bold,
-),
-),
-),
-const SizedBox(width: AppSpacing.md),
-Expanded(
-child: Column(
-crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-Text(profile.nickname, style: AppTypography.titleMd),
-const SizedBox(height: 4),
-Text(profile.email, style: AppTypography.captionSm),
- ],
-),
-),
-IconButton(
-icon: const Icon(Icons.edit_outlined, color: AppColors.primary500),
-onPressed: () {},
-),
-],
-),
-),
-);
+class _TargetTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  const _TargetTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(icon, color: AppColors.primary500),
+        title: Text(title),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(value,
+                style:
+                    AppTypography.bodyMd.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
 }
 
-Widget _buildSectionTitle(String title) {
-return Text(title, style: AppTypography.titleMd);
-}
-
-Widget _buildTargetTile(
-BuildContext context,
-WidgetRef ref, {
-required IconData icon,
-required Color iconColor,
-required String title,
-required String valueText,
-required VoidCallback onTap,
-}) {
-return Card(
-child: ListTile(
-leading: CircleAvatar(
-backgroundColor: iconColor.withOpacity(0.15),
-child: Icon(icon, color: iconColor),
-),
-title: Text(title, style: AppTypography.bodyMd),
-trailing: Row(
-mainAxisSize: MainAxisSize.min,
-children: [
-Text(
-valueText,
-style: AppTypography.bodyMd.copyWith(
-fontWeight: FontWeight.bold,
-color: AppColors.primary500,
-),
-),
-const Icon(Icons.chevron_right, color: AppColors.neutral500),
- ],
-),
-onTap: onTap,
-),
-);
-}
-
-void _showEditTargetDialog(
-BuildContext context,
-WidgetRef ref, {
-required String title,
-required int currentValue,
-required String unit,
-required Function(int) onSave,
-}) {
-final controller = TextEditingController(text: currentValue.toString());
-
-showDialog(
-context: context,
-builder: (context) {
-return AlertDialog(
-title: Text(title),
-content: TextField(
-controller: controller,
-keyboardType: TextInputType.number,
-decoration: InputDecoration(
-suffixText: unit,
-border: const OutlineInputBorder(),
-),
-),
-actions: [
-TextButton(
-onPressed: () => Navigator.pop(context),
-child: const Text('취소'),
-),
-ElevatedButton(
-onPressed: () {
-final newValue = int.tryParse(controller.text.trim());
-if (newValue != null && newValue > 0) {
-onSave(newValue);
-Navigator.pop(context);
-}
-},
-child: const Text('저장'),
-),
- ],
-);
-},
-);
-}
-
-void _showLogoutDialog(BuildContext context) {
-showDialog(
-context: context,
-builder: (context) {
-return AlertDialog(
-title: const Text('로그아웃'),
-content: const Text('정말 로그아웃 하시겠습니까?\n오프라인에 남아있는 기록은 저장됩니다.'),
-actions: [
-TextButton(
-onPressed: () => Navigator.pop(context),
-child: const Text('취소'),
-),
-ElevatedButton(
-style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-onPressed: () => Navigator.pop(context),
-child: const Text('로그아웃'),
-),
- ],
-);
-},
-);
-}
-
-String _formatTime(DateTime dt) {
-return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-}
+Future<void> _editTarget(
+  BuildContext context, {
+  required String title,
+  required int value,
+  required String unit,
+  required ValueChanged<int> onSave,
+}) async {
+  final controller = TextEditingController(text: value.toString());
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(suffixText: unit),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final parsed = int.tryParse(controller.text.trim());
+            if (parsed != null && parsed > 0) Navigator.pop(context, parsed);
+          },
+          child: const Text('저장'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  if (result != null) onSave(result);
 }

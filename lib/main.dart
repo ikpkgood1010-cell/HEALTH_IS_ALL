@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'mock_data_provider.dart';
 import 'api_data_provider.dart';
 import 'main_navigation_screen.dart';
 import 'anonymous_user_repository.dart';
+import 'app_theme.dart';
 
 /// HEALTH IS ALL - Application Entrypoint
 ///
@@ -15,12 +17,15 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final userId = await AnonymousUserRepository().loadOrCreateUserId();
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => MockDataProvider()),
-        ChangeNotifierProvider(create: (_) => ApiDataProvider(userId: userId)),
-      ],
-      child: const HealthIsAllApp(),
+    riverpod.ProviderScope(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => MockDataProvider()),
+          ChangeNotifierProvider(
+              create: (_) => ApiDataProvider(userId: userId)),
+        ],
+        child: const HealthIsAllApp(),
+      ),
     ),
   );
 }
@@ -33,18 +38,7 @@ class HealthIsAllApp extends StatelessWidget {
     return MaterialApp(
       title: 'HEALTH IS ALL',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: const Color(0xFFF7F9FC),
-        fontFamily: 'Pretendard',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          iconTheme: IconThemeData(color: Colors.black87),
-          titleTextStyle: TextStyle(
-              color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
       home: const MainNavigationScreen(),
     );
   }

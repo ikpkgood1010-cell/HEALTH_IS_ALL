@@ -93,11 +93,27 @@ class ApiDataProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> logWorkout(int minutes, int burnedCalories) async {
+  Future<void> logWorkout(
+    int minutes,
+    int burnedCalories, {
+    String? exerciseCategoryGroup,
+    String? exerciseCategory,
+    String? intensityLevel,
+    int? rpe,
+    String? conditionScore,
+  }) async {
     await _recordActivity(
       recordType: 'workout_log',
       value: minutes.toDouble(),
-      detailData: {'burned_calories': burnedCalories},
+      detailData: {
+        'burned_calories': burnedCalories,
+        if (exerciseCategoryGroup != null)
+          'exercise_category_group': exerciseCategoryGroup,
+        if (exerciseCategory != null) 'exercise_category': exerciseCategory,
+        if (intensityLevel != null) 'intensity_level': intensityLevel,
+        if (rpe != null) 'rpe': rpe,
+        if (conditionScore != null) 'condition_score': conditionScore,
+      },
       localApply: () => _workoutMinutes += minutes,
     );
   }
