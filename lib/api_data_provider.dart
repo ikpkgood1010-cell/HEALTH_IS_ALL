@@ -15,7 +15,7 @@ class ApiDataProvider extends ChangeNotifier {
   final HealthIApiClient _api;
   final String userId;
 
-  ApiDataProvider({HealthIApiClient? apiClient, this.userId = 'user_test_001'})
+  ApiDataProvider({HealthIApiClient? apiClient, required this.userId})
       : _api = apiClient ?? HealthIApiClient();
 
   // ---- MockDataProvider와 동일한 필드/게터 (화면 호환성 유지) ----
