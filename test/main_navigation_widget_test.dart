@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:provider/provider.dart';
+import 'package:health_is_all/api_client.dart';
+import 'package:health_is_all/api_data_provider.dart';
 import 'package:health_is_all/main_navigation_screen.dart';
 
 /// NOTE(PATCH-006 검증): 기존 테스트는 MainNavigationScreen을 import하지 않고
@@ -9,29 +14,35 @@ import 'package:health_is_all/main_navigation_screen.dart';
 /// 아래는 실제 위젯을 pumpWidget하여 진짜 회귀를 감지하도록 재작성한 버전입니다.
 void main() {
   Widget createWidgetUnderTest() {
-    return const MaterialApp(
-      home: MainNavigationScreen(),
+    final apiClient = HealthIApiClient(
+      client: MockClient((_) async => http.Response('{}', 200)),
+    );
+    return ChangeNotifierProvider(
+      create: (_) => ApiDataProvider(userId: 'anon_test', apiClient: apiClient),
+      child: const MaterialApp(home: MainNavigationScreen()),
     );
   }
 
   group('MainNavigation 위젯 테스트 (실제 화면 기준)', () {
     testWidgets('하단 내비게이션 바 항목 3개가 실제 라벨로 렌더링된다', (WidgetTester tester) async {
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(find.text('건강 홈'), findsOneWidget);
       expect(find.text('퀘스트'), findsOneWidget);
       expect(find.text('건강이 상점'), findsOneWidget);
     });
 
-    testWidgets('탭을 누르면 currentIndex가 바뀌고 다른 화면으로 전환된다', (WidgetTester tester) async {
+    testWidgets('탭을 누르면 currentIndex가 바뀌고 다른 화면으로 전환된다',
+        (WidgetTester tester) async {
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       await tester.tap(find.text('퀘스트'));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
-      final navBar = tester.widget<BottomNavigationBar>(find.byType(BottomNavigationBar));
+      final navBar =
+          tester.widget<BottomNavigationBar>(find.byType(BottomNavigationBar));
       expect(navBar.currentIndex, 1);
     });
   });
