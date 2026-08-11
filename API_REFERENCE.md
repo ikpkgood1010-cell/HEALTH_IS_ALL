@@ -96,6 +96,16 @@
   `_today_range()`/`_calc_streak_days()` 참고).
 - 유저가 아직 없으면(첫 요청) 기본값(레벨 1, Exp 0, 오늘자 값 전부 0)으로 응답한다.
 
+### 길드 제작소·인벤토리·파티
+
+- `GET /api/v1/game/workshop/{user_id}`: 제작법, 보유 주화, 제작 인벤토리 조회
+- `POST /api/v1/game/workshop/{recipe_code}/craft`: 사용자당 한 번만 제작하고 비용 차감
+- `GET /api/v1/game/party/{user_id}`: 현재 원정대 슬롯 조회
+- `POST /api/v1/game/party/vanguard/assign`: 합류한 용사를 선봉 슬롯에 배치
+
+제작과 배치는 `activity_logs`의 append-only 게임 이벤트로 저장한다. 제작품과 파티
+배치는 MVP에서 Exp, 건강 기록, 전투력, 보상 배율을 변경하지 않는다.
+
 ## 데이터 모델 (`backend/database.py`)
 
 | 테이블 | 용도 |

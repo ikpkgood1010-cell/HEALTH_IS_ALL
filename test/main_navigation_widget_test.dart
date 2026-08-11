@@ -12,6 +12,8 @@ void main() {
   Widget createWidgetUnderTest() {
     var adventureSettled = false;
     var heroJoined = false;
+    var itemCrafted = false;
+    var partyAssigned = false;
     final apiClient = HealthIApiClient(
       client: MockClient((request) async {
         if (request.url.path.contains('/health-i/status/')) {
@@ -103,6 +105,66 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path.endsWith('/craft')) {
+          itemCrafted = true;
+          return http.Response(
+            '{"item":{"item_code":"FOREST_COMPASS",'
+            '"name":"숲길 나침반","category":"KEEPSAKE",'
+            '"rarity":"COMMON","description":"첫 원정의 방향을 기억해요.",'
+            '"gameplay_effect":"NONE","cost_paid":20,'
+            '"crafted_at":"2026-08-11T12:00:00"},'
+            '"already_crafted":false,"guild_coin_balance":60}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.contains('/game/workshop/')) {
+          return http.Response(
+            '{"guild_coin_balance":${itemCrafted ? 60 : 80},"recipes":['
+            '{"recipe_code":"FOREST_COMPASS","item_code":"FOREST_COMPASS",'
+            '"name":"숲길 나침반","category":"KEEPSAKE",'
+            '"rarity":"COMMON","cost":20,'
+            '"description":"첫 원정의 방향을 기억해요.",'
+            '"gameplay_effect":"NONE","unlocked":$heroJoined,'
+            '"unlock_message":"용사 합류 후 열려요.",'
+            '"crafted":$itemCrafted}],"inventory":${itemCrafted ? '[{"item_code":"FOREST_COMPASS","name":"숲길 나침반","category":"KEEPSAKE","rarity":"COMMON","description":"첫 원정의 방향을 기억해요.","gameplay_effect":"NONE","cost_paid":20,"crafted_at":"2026-08-11T12:00:00"}]' : '[]'}}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.endsWith('/party/vanguard/assign')) {
+          partyAssigned = true;
+          return http.Response(
+            '{"slot_code":"VANGUARD","slot_name":"선봉",'
+            '"member":{"hero_code":"FOREST_SCOUT_ARU",'
+            '"name":"아루","title":"새싹 길잡이",'
+            '"role":"탐험 용사","element":"FOREST",'
+            '"rarity":"STORY","join_source":"FIRST_ADVENTURE_CLAIM",'
+            '"join_message":"합류했어요.","gameplay_effect":"NONE",'
+            '"joined_at":"2026-08-10T12:00:00",'
+            '"source_adventure_id":"adv-test"},'
+            '"already_assigned":false,"assigned_at":"2026-08-11T12:00:00"}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.contains('/game/party/')) {
+          return http.Response(
+            partyAssigned
+                ? '{"slots":[{"slot_code":"VANGUARD","slot_name":"선봉",'
+                    '"member":{"hero_code":"FOREST_SCOUT_ARU",'
+                    '"name":"아루","title":"새싹 길잡이",'
+                    '"role":"탐험 용사","element":"FOREST",'
+                    '"rarity":"STORY","join_source":"FIRST_ADVENTURE_CLAIM",'
+                    '"join_message":"합류했어요.","gameplay_effect":"NONE",'
+                    '"joined_at":"2026-08-10T12:00:00",'
+                    '"source_adventure_id":"adv-test"}}]}'
+                : '{"slots":[{"slot_code":"VANGUARD",'
+                    '"slot_name":"선봉","member":null}]}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         if (request.url.path.endsWith('/claim')) {
           heroJoined = true;
           return http.Response(
@@ -179,11 +241,25 @@ void main() {
     await tester.scrollUntilVisible(find.text('나의 원정대'), -300);
     await tester.pumpAndSettle();
     expect(find.text('새싹 길잡이 · 아루'), findsOneWidget);
+    expect(find.text('선봉에 배치'), findsOneWidget);
+    await tester.tap(find.text('선봉에 배치'));
+    await tester.pumpAndSettle();
+    expect(find.text('배치 완료'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.text('길드 시설'), 300);
     await tester.pumpAndSettle();
     expect(find.text('길드 시설'), findsOneWidget);
     expect(find.text('들판 훈련터'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('길드 제작소'), 300);
+    await tester.pumpAndSettle();
+    expect(find.text('길드 제작소'), findsOneWidget);
+    expect(find.text('20 주화'), findsOneWidget);
+    await tester.tap(find.text('20 주화'));
+    await tester.pumpAndSettle();
+    expect(find.text('보유 중'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('원정 가방'), 300);
+    await tester.pumpAndSettle();
+    expect(find.text('숲길 나침반'), findsWidgets);
     await tester.scrollUntilVisible(find.text('지난 모험 회상'), 300);
     await tester.pumpAndSettle();
     expect(find.text('지난 모험 회상'), findsOneWidget);

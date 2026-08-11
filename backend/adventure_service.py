@@ -25,6 +25,7 @@ ADVENTURE_RECORD = "game_adventure"
 CLAIM_RECORD = "game_adventure_claim"
 FACILITY_RECORD = "game_facility_investment"
 HERO_JOIN_RECORD = "game_hero_join"
+CRAFT_RECORD = "game_craft"
 OFFLINE_EFFICIENCY = 0.70
 FACILITY_INVESTMENT_RATE = 0.20
 ADVENTURE_WINDOW_HOURS = 12
@@ -409,10 +410,7 @@ def training_grounds_status(db: Session, *, user_id: str) -> dict:
         ActivityLogModel.user_id == user_id,
         ActivityLogModel.record_type == FACILITY_RECORD,
     ).scalar() or 0)
-    balance = int(db.query(func.coalesce(func.sum(ActivityLogModel.value), 0)).filter(
-        ActivityLogModel.user_id == user_id,
-        ActivityLogModel.record_type == CLAIM_RECORD,
-    ).scalar() or 0)
+    balance = guild_coin_balance(db, user_id=user_id)
 
     level = 1
     remainder = total
@@ -434,3 +432,15 @@ def training_grounds_status(db: Session, *, user_id: str) -> dict:
         "description": "모험 보상의 20%가 자동 적립되는 길드 기초 시설",
         **_facility_stage(level),
     }
+
+
+def guild_coin_balance(db: Session, *, user_id: str) -> int:
+    earned = int(db.query(func.coalesce(func.sum(ActivityLogModel.value), 0)).filter(
+        ActivityLogModel.user_id == user_id,
+        ActivityLogModel.record_type == CLAIM_RECORD,
+    ).scalar() or 0)
+    spent = int(db.query(func.coalesce(func.sum(ActivityLogModel.value), 0)).filter(
+        ActivityLogModel.user_id == user_id,
+        ActivityLogModel.record_type == CRAFT_RECORD,
+    ).scalar() or 0)
+    return max(0, earned - spent)

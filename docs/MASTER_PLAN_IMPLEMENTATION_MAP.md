@@ -10,12 +10,14 @@
 | HBI 공식 | 완료 | `backend/game_balance_engine.py`, `lib/game_balance.dart` | 수면·스트레스 데이터 연동 |
 | 운동 27종·강도 분리 | 완료 | `backend/exercise_catalog.py`, `lib/exercise_catalog.dart` | 필요 시 DB 카탈로그화 |
 | 근육 회복 계산 | 완료 | `backend/recovery_calculator.py`, `backend/main.py` | 저장·위젯 연동 |
-| 건강 기반 길드 | 2차 완료 | `lib/guild_screen.dart` | 3D 이미지 적용·제작·장기 이벤트 |
+| 건강 기반 길드 | 3차 완료 | `lib/guild_screen.dart` | 3D 이미지 적용·장기 이벤트 |
 | 자동 모험 12시간·70% | 완료 | `backend/adventure_service.py`, `backend/main.py` | 과거 구간 누적 정책 검토 |
 | 보상 중복 방지 | 완료 | `backend/adventure_service.py` | 운영 동시성 관측 |
 | 훈련장 1종 | 외형 성장 포함 완료 | `backend/adventure_service.py`, `lib/guild_screen.dart` | 시설 효과는 경제 검증 후 추가 |
 | 던전 가중치·안전 규칙 | 결과 다양화 완료 | `backend/game_balance_engine.py`, `backend/adventure_service.py`, `lib/guild_screen.dart` | 장기 전투 애니메이션·보스 패턴 |
 | 이야기 용사 합류 | 첫 용사 완료 | `backend/adventure_service.py`, `backend/main.py`, `lib/guild_screen.dart` | 스테이지·Quest·이벤트 용사 확장 |
+| 제작·인벤토리 | 수집형 MVP 완료 | `backend/guild_workshop_service.py`, `lib/guild_screen.dart` | 장식 적용·장기 제작법 |
+| 용사 파티 배치 | 선봉 1슬롯 완료 | `backend/guild_workshop_service.py`, `lib/guild_screen.dart` | 추가 용사 합류 후 다중 슬롯 |
 | 게임 UI 아트 방향 | 기준 확정 | `docs/GAME_UI_ART_DIRECTION.md`, `lib/guild_screen.dart` | 실제 SD 3D 캐릭터·장면 교체 |
 | 모험 회상 | 최근 5개 완료 | `backend/adventure_service.py`, `backend/main.py`, `lib/guild_screen.dart` | 앨범·상세 이야기 확장 |
 | 기억 조각·환생 | 수식·해금 기준만 반영 | 게임 엔진·길드 화면 | 초기화·복구 검증 후 실행 기능 |

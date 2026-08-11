@@ -117,6 +117,70 @@ class HeroRosterResponse(BaseModel):
     items: List[HeroResponse] = Field(default_factory=list)
 
 
+class InventoryItemResponse(BaseModel):
+    item_code: str
+    name: str
+    category: str
+    rarity: str
+    description: str
+    gameplay_effect: str
+    cost_paid: int
+    crafted_at: datetime
+
+
+class WorkshopRecipeResponse(BaseModel):
+    recipe_code: str
+    item_code: str
+    name: str
+    category: str
+    rarity: str
+    cost: int
+    description: str
+    gameplay_effect: str
+    unlocked: bool
+    unlock_message: str
+    crafted: bool
+
+
+class WorkshopResponse(BaseModel):
+    guild_coin_balance: int
+    recipes: List[WorkshopRecipeResponse] = Field(default_factory=list)
+    inventory: List[InventoryItemResponse] = Field(default_factory=list)
+
+
+class CraftRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class CraftResponse(BaseModel):
+    item: InventoryItemResponse
+    already_crafted: bool
+    guild_coin_balance: int
+
+
+class PartySlotResponse(BaseModel):
+    slot_code: str
+    slot_name: str
+    member: Optional[HeroResponse] = None
+
+
+class PartyStatusResponse(BaseModel):
+    slots: List[PartySlotResponse] = Field(default_factory=list)
+
+
+class PartyAssignRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    hero_code: str = Field(..., min_length=1, max_length=50)
+
+
+class PartyAssignResponse(BaseModel):
+    slot_code: str
+    slot_name: str
+    member: HeroResponse
+    already_assigned: bool
+    assigned_at: datetime
+
+
 class AdventureClaimResponse(BaseModel):
     adventure_id: str
     claim_id: str

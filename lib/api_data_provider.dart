@@ -45,6 +45,8 @@ class ApiDataProvider extends ChangeNotifier {
   TrainingGroundsStatus? _trainingGrounds;
   List<AdventureState> _adventureHistory = const [];
   List<HeroCompanion> _heroRoster = const [];
+  WorkshopState? _workshop;
+  PartyStatus? _party;
   bool _isGuildLoading = false;
   String? _guildError;
   final Map<String, String> _pendingRecordKeys = {};
@@ -72,6 +74,8 @@ class ApiDataProvider extends ChangeNotifier {
   TrainingGroundsStatus? get trainingGrounds => _trainingGrounds;
   List<AdventureState> get adventureHistory => _adventureHistory;
   List<HeroCompanion> get heroRoster => _heroRoster;
+  WorkshopState? get workshop => _workshop;
+  PartyStatus? get party => _party;
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
 
@@ -113,11 +117,15 @@ class ApiDataProvider extends ChangeNotifier {
         _api.fetchTrainingGrounds(userId),
         _api.fetchAdventureHistory(userId),
         _api.fetchHeroRoster(userId),
+        _api.fetchWorkshop(userId),
+        _api.fetchParty(userId),
       ]);
       _adventure = settledAdventure;
       _trainingGrounds = results[0] as TrainingGroundsStatus;
       _adventureHistory = results[1] as List<AdventureState>;
       _heroRoster = results[2] as List<HeroCompanion>;
+      _workshop = results[3] as WorkshopState;
+      _party = results[4] as PartyStatus;
     } catch (_) {
       _guildError = '길드 서버와 연결하지 못했어요. 건강 기반 미리보기는 계속 볼 수 있어요.';
     } finally {
@@ -145,13 +153,64 @@ class ApiDataProvider extends ChangeNotifier {
         _api.fetchTrainingGrounds(userId),
         _api.fetchAdventureHistory(userId),
         _api.fetchHeroRoster(userId),
+        _api.fetchWorkshop(userId),
+        _api.fetchParty(userId),
       ]);
       _trainingGrounds = results[0] as TrainingGroundsStatus;
       _adventureHistory = results[1] as List<AdventureState>;
       _heroRoster = results[2] as List<HeroCompanion>;
+      _workshop = results[3] as WorkshopState;
+      _party = results[4] as PartyStatus;
       return result;
     } catch (_) {
       _guildError = '보상을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
+      return null;
+    } finally {
+      _isGuildLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<CraftResult?> craftItem(String recipeCode) async {
+    if (_isGuildLoading) return null;
+    _isGuildLoading = true;
+    _guildError = null;
+    notifyListeners();
+    try {
+      final result = await _api.craftItem(
+        userId: userId,
+        recipeCode: recipeCode,
+      );
+      final refreshed = await Future.wait<Object>([
+        _api.fetchWorkshop(userId),
+        _api.fetchTrainingGrounds(userId),
+      ]);
+      _workshop = refreshed[0] as WorkshopState;
+      _trainingGrounds = refreshed[1] as TrainingGroundsStatus;
+      return result;
+    } catch (_) {
+      _guildError = '제작하지 못했어요. 보유 주화와 해금 조건을 확인해 주세요.';
+      return null;
+    } finally {
+      _isGuildLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<PartyAssignResult?> assignVanguard(String heroCode) async {
+    if (_isGuildLoading) return null;
+    _isGuildLoading = true;
+    _guildError = null;
+    notifyListeners();
+    try {
+      final result = await _api.assignVanguard(
+        userId: userId,
+        heroCode: heroCode,
+      );
+      _party = await _api.fetchParty(userId);
+      return result;
+    } catch (_) {
+      _guildError = '용사를 배치하지 못했어요. 합류 상태를 다시 확인해 주세요.';
       return null;
     } finally {
       _isGuildLoading = false;

@@ -188,11 +188,38 @@ def test_health_record_to_adventure_and_training_ground_journey(journey_runtime)
         "FOREST_SCOUT_ARU"
     ]
 
+    workshop = client.get(f"/api/v1/game/workshop/{user_id}")
+    assert workshop.status_code == 200
+    assert workshop.json()["recipes"][0]["unlocked"] is True
+    crafted = client.post(
+        "/api/v1/game/workshop/FOREST_COMPASS/craft",
+        json={"user_id": user_id},
+    )
+    crafted_again = client.post(
+        "/api/v1/game/workshop/FOREST_COMPASS/craft",
+        json={"user_id": user_id},
+    )
+    assert crafted.status_code == 200
+    assert crafted.json()["item"]["name"] == "숲길 나침반"
+    assert crafted_again.json()["already_crafted"] is True
+
+    party = client.get(f"/api/v1/game/party/{user_id}")
+    assert party.status_code == 200
+    assert party.json()["slots"][0]["member"] is None
+    assigned = client.post(
+        "/api/v1/game/party/vanguard/assign",
+        json={"user_id": user_id, "hero_code": "FOREST_SCOUT_ARU"},
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()["member"]["name"] == "아루"
+
     facility = client.get(
         f"/api/v1/game/facilities/training-grounds/{user_id}"
     ).json()
     assert facility["total_invested"] == claimed.json()["facility_invested"]
-    assert facility["guild_coin_balance"] == claimed.json()["guild_coins_received"]
+    assert facility["guild_coin_balance"] == (
+        claimed.json()["guild_coins_received"] - crafted.json()["item"]["cost_paid"]
+    )
     assert facility["stage_name"] == "들판 훈련터"
 
     history = client.get(

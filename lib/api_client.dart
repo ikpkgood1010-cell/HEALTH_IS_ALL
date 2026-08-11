@@ -158,6 +158,84 @@ class HealthIApiClient {
         .toList(growable: false);
   }
 
+  Future<WorkshopState> fetchWorkshop(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/workshop/$userId');
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '길드 제작소 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return WorkshopState.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  Future<CraftResult> craftItem({
+    required String userId,
+    required String recipeCode,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/game/workshop/$recipeCode/craft',
+    );
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'user_id': userId}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        response.statusCode == 409 ? '제작 조건이나 주화를 확인해 주세요.' : '제작에 실패했어요.',
+        statusCode: response.statusCode,
+      );
+    }
+    return CraftResult.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  Future<PartyStatus> fetchParty(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/party/$userId');
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '원정대 배치 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return PartyStatus.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  Future<PartyAssignResult> assignVanguard({
+    required String userId,
+    required String heroCode,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/party/vanguard/assign');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'user_id': userId, 'hero_code': heroCode}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '원정대 배치에 실패했어요.',
+        statusCode: response.statusCode,
+      );
+    }
+    return PartyAssignResult.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// Returns saved adventures only. This endpoint never settles or rewards.
   Future<List<AdventureState>> fetchAdventureHistory(
     String userId, {
@@ -326,6 +404,167 @@ class HeroCompanion {
         gameplayEffect: json['gameplay_effect'] as String? ?? 'NONE',
         joinedAt: DateTime.tryParse(json['joined_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+class InventoryItem {
+  final String itemCode;
+  final String name;
+  final String category;
+  final String rarity;
+  final String description;
+  final String gameplayEffect;
+  final int costPaid;
+  final DateTime craftedAt;
+
+  const InventoryItem({
+    required this.itemCode,
+    required this.name,
+    required this.category,
+    required this.rarity,
+    required this.description,
+    required this.gameplayEffect,
+    required this.costPaid,
+    required this.craftedAt,
+  });
+
+  factory InventoryItem.fromJson(Map<String, dynamic> json) => InventoryItem(
+        itemCode: json['item_code'] as String? ?? '',
+        name: json['name'] as String? ?? '제작품',
+        category: json['category'] as String? ?? 'KEEPSAKE',
+        rarity: json['rarity'] as String? ?? 'COMMON',
+        description: json['description'] as String? ?? '',
+        gameplayEffect: json['gameplay_effect'] as String? ?? 'NONE',
+        costPaid: (json['cost_paid'] as num?)?.toInt() ?? 0,
+        craftedAt: DateTime.tryParse(json['crafted_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+class WorkshopRecipe {
+  final String recipeCode;
+  final String itemCode;
+  final String name;
+  final String category;
+  final int cost;
+  final String description;
+  final bool unlocked;
+  final String unlockMessage;
+  final bool crafted;
+
+  const WorkshopRecipe({
+    required this.recipeCode,
+    required this.itemCode,
+    required this.name,
+    required this.category,
+    required this.cost,
+    required this.description,
+    required this.unlocked,
+    required this.unlockMessage,
+    required this.crafted,
+  });
+
+  factory WorkshopRecipe.fromJson(Map<String, dynamic> json) => WorkshopRecipe(
+        recipeCode: json['recipe_code'] as String? ?? '',
+        itemCode: json['item_code'] as String? ?? '',
+        name: json['name'] as String? ?? '제작법',
+        category: json['category'] as String? ?? 'KEEPSAKE',
+        cost: (json['cost'] as num?)?.toInt() ?? 0,
+        description: json['description'] as String? ?? '',
+        unlocked: json['unlocked'] as bool? ?? false,
+        unlockMessage: json['unlock_message'] as String? ?? '',
+        crafted: json['crafted'] as bool? ?? false,
+      );
+}
+
+class WorkshopState {
+  final int guildCoinBalance;
+  final List<WorkshopRecipe> recipes;
+  final List<InventoryItem> inventory;
+
+  const WorkshopState({
+    required this.guildCoinBalance,
+    required this.recipes,
+    required this.inventory,
+  });
+
+  factory WorkshopState.fromJson(Map<String, dynamic> json) => WorkshopState(
+        guildCoinBalance: (json['guild_coin_balance'] as num?)?.toInt() ?? 0,
+        recipes: (json['recipes'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(WorkshopRecipe.fromJson)
+            .toList(growable: false),
+        inventory: (json['inventory'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(InventoryItem.fromJson)
+            .toList(growable: false),
+      );
+}
+
+class CraftResult {
+  final InventoryItem item;
+  final bool alreadyCrafted;
+  final int guildCoinBalance;
+
+  const CraftResult({
+    required this.item,
+    required this.alreadyCrafted,
+    required this.guildCoinBalance,
+  });
+
+  factory CraftResult.fromJson(Map<String, dynamic> json) => CraftResult(
+        item: InventoryItem.fromJson(json['item'] as Map<String, dynamic>),
+        alreadyCrafted: json['already_crafted'] as bool? ?? false,
+        guildCoinBalance: (json['guild_coin_balance'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class PartySlot {
+  final String slotCode;
+  final String slotName;
+  final HeroCompanion? member;
+
+  const PartySlot({
+    required this.slotCode,
+    required this.slotName,
+    required this.member,
+  });
+
+  factory PartySlot.fromJson(Map<String, dynamic> json) => PartySlot(
+        slotCode: json['slot_code'] as String? ?? 'VANGUARD',
+        slotName: json['slot_name'] as String? ?? '선봉',
+        member: json['member'] is Map<String, dynamic>
+            ? HeroCompanion.fromJson(json['member'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
+class PartyStatus {
+  final List<PartySlot> slots;
+
+  const PartyStatus({required this.slots});
+
+  factory PartyStatus.fromJson(Map<String, dynamic> json) => PartyStatus(
+        slots: (json['slots'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(PartySlot.fromJson)
+            .toList(growable: false),
+      );
+}
+
+class PartyAssignResult {
+  final PartySlot slot;
+  final bool alreadyAssigned;
+
+  const PartyAssignResult({
+    required this.slot,
+    required this.alreadyAssigned,
+  });
+
+  factory PartyAssignResult.fromJson(Map<String, dynamic> json) =>
+      PartyAssignResult(
+        slot: PartySlot.fromJson(json),
+        alreadyAssigned: json['already_assigned'] as bool? ?? false,
       );
 }
 

@@ -51,6 +51,8 @@ class _GuildScreenState extends State<GuildScreen> {
             Text('나의 원정대', style: AppTypography.titleMd),
             const SizedBox(height: 8),
             _HeroRosterCard(heroes: data.heroRoster),
+            const SizedBox(height: 10),
+            _PartyFormationCard(data: data),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -90,6 +92,14 @@ class _GuildScreenState extends State<GuildScreen> {
             Text('길드 시설', style: AppTypography.titleMd),
             const SizedBox(height: 8),
             _TrainingGroundsCard(facility: facility),
+            const SizedBox(height: 20),
+            Text('길드 제작소', style: AppTypography.titleMd),
+            const SizedBox(height: 8),
+            _WorkshopCard(data: data),
+            const SizedBox(height: 16),
+            Text('원정 가방', style: AppTypography.titleMd),
+            const SizedBox(height: 8),
+            _InventoryCard(items: data.workshop?.inventory ?? const []),
             const SizedBox(height: 20),
             Text('지난 모험 회상', style: AppTypography.titleMd),
             const SizedBox(height: 8),
@@ -373,6 +383,64 @@ class _HeroRosterCard extends StatelessWidget {
   }
 }
 
+class _PartyFormationCard extends StatelessWidget {
+  final ApiDataProvider data;
+
+  const _PartyFormationCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final hero = data.heroRoster.isEmpty ? null : data.heroRoster.first;
+    final slots = data.party?.slots ?? const <PartySlot>[];
+    final member = slots.isEmpty ? null : slots.first.member;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: AppColors.primary100,
+              child: Icon(Icons.groups_2_rounded, color: AppColors.primary700),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('선봉 슬롯', style: AppTypography.bodyMd),
+                  Text(
+                    member == null
+                        ? hero == null
+                            ? '합류한 용사가 없어요.'
+                            : '${hero.title} ${hero.name}을 배치할 수 있어요.'
+                        : '${member.title} ${member.name} 배치 중',
+                    style: AppTypography.captionSm,
+                  ),
+                ],
+              ),
+            ),
+            if (member != null)
+              const Chip(label: Text('배치 완료'))
+            else
+              FilledButton.tonal(
+                onPressed: hero == null || data.isGuildLoading
+                    ? null
+                    : () async {
+                        final result = await data.assignVanguard(hero.heroCode);
+                        if (!context.mounted || result == null) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${hero.name}을 선봉에 배치했어요.')),
+                        );
+                      },
+                child: const Text('선봉에 배치'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AdventureCard extends StatelessWidget {
   final ApiDataProvider data;
 
@@ -621,6 +689,168 @@ class _TrainingGroundsCard extends StatelessWidget {
                   style: AppTypography.captionSm,
                 ),
               ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkshopCard extends StatelessWidget {
+  final ApiDataProvider data;
+
+  const _WorkshopCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final workshop = data.workshop;
+    if (workshop == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Text('서버 연결 후 제작법이 표시돼요.'),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.handyman_rounded, color: AppColors.primary700),
+                const SizedBox(width: 8),
+                Expanded(child: Text('생활 제작', style: AppTypography.titleMd)),
+                Text(
+                  '보유 ${workshop.guildCoinBalance} 주화',
+                  style: AppTypography.captionSm,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (var index = 0; index < workshop.recipes.length; index++) ...[
+              _RecipeRow(
+                recipe: workshop.recipes[index],
+                balance: workshop.guildCoinBalance,
+                loading: data.isGuildLoading,
+                onCraft: () async {
+                  final recipe = workshop.recipes[index];
+                  final result = await data.craftItem(recipe.recipeCode);
+                  if (!context.mounted || result == null) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${result.item.name} 제작 완료!')),
+                  );
+                },
+              ),
+              if (index != workshop.recipes.length - 1)
+                const Divider(height: 24),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeRow extends StatelessWidget {
+  final WorkshopRecipe recipe;
+  final int balance;
+  final bool loading;
+  final Future<void> Function() onCraft;
+
+  const _RecipeRow({
+    required this.recipe,
+    required this.balance,
+    required this.loading,
+    required this.onCraft,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canCraft =
+        recipe.unlocked && !recipe.crafted && balance >= recipe.cost;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF4CF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            recipe.category == 'COSTUME'
+                ? Icons.checkroom_rounded
+                : Icons.explore_rounded,
+            color: const Color(0xFF9A6A00),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(recipe.name, style: AppTypography.bodyMd),
+              const SizedBox(height: 2),
+              Text(recipe.description, style: AppTypography.captionSm),
+              if (!recipe.unlocked) ...[
+                const SizedBox(height: 4),
+                Text(recipe.unlockMessage, style: AppTypography.captionSm),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton(
+          onPressed: canCraft && !loading ? onCraft : null,
+          child: Text(
+            recipe.crafted
+                ? '보유 중'
+                : recipe.unlocked && balance < recipe.cost
+                    ? '${recipe.cost} 필요'
+                    : '${recipe.cost} 주화',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InventoryCard extends StatelessWidget {
+  final List<InventoryItem> items;
+
+  const _InventoryCard({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Text('제작한 기념품과 의상이 이곳에 안전하게 보관돼요.'),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF4CF),
+                  child: Icon(Icons.backpack_rounded, color: Color(0xFF9A6A00)),
+                ),
+                title: Text(items[index].name),
+                subtitle: Text('${items[index].description} · 능력치 효과 없음'),
+              ),
+              if (index != items.length - 1) const Divider(),
             ],
           ],
         ),

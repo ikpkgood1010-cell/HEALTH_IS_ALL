@@ -32,15 +32,21 @@ from backend.models import (
     AdventureHistoryResponse,
     AdventureResponse,
     AdventureSettleRequest,
+    CraftRequest,
+    CraftResponse,
     GameOverviewResponse,
     HealthIStateResponse,
     HealthRecordRequest,
     HealthRecordResponse,
     HeroResponse,
     HeroRosterResponse,
+    PartyAssignRequest,
+    PartyAssignResponse,
+    PartyStatusResponse,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
     TrainingGroundsResponse,
+    WorkshopResponse,
 )
 from backend.game_balance_engine import build_game_overview
 from backend.adventure_service import (
@@ -58,6 +64,16 @@ from backend.recovery_calculator import (
     ConditionScore,
     TargetMuscle,
     calculate_muscle_recovery,
+)
+from backend.guild_workshop_service import (
+    HeroNotJoinedError,
+    InsufficientGuildCoinsError,
+    RecipeNotFoundError,
+    WorkshopLockedError,
+    assign_party_member,
+    craft_item,
+    party_status,
+    workshop_status,
 )
 
 
@@ -502,6 +518,67 @@ def get_hero_roster(
     return HeroRosterResponse(
         items=[HeroResponse(**item) for item in hero_roster(db, user_id=user_id)]
     )
+
+
+@app.get(
+    "/api/v1/game/workshop/{user_id}",
+    response_model=WorkshopResponse,
+)
+def get_workshop(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> WorkshopResponse:
+    return WorkshopResponse(**workshop_status(db, user_id=user_id))
+
+
+@app.post(
+    "/api/v1/game/workshop/{recipe_code}/craft",
+    response_model=CraftResponse,
+)
+def craft_workshop_item(
+    recipe_code: str,
+    request: CraftRequest,
+    db: Session = Depends(get_db),
+) -> CraftResponse:
+    try:
+        result = craft_item(db, user_id=request.user_id, recipe_code=recipe_code)
+    except RecipeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Recipe not found") from exc
+    except WorkshopLockedError as exc:
+        raise HTTPException(status_code=409, detail="Workshop is locked") from exc
+    except InsufficientGuildCoinsError as exc:
+        raise HTTPException(status_code=409, detail="Not enough guild coins") from exc
+    return CraftResponse(**result)
+
+
+@app.get(
+    "/api/v1/game/party/{user_id}",
+    response_model=PartyStatusResponse,
+)
+def get_party(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> PartyStatusResponse:
+    return PartyStatusResponse(**party_status(db, user_id=user_id))
+
+
+@app.post(
+    "/api/v1/game/party/vanguard/assign",
+    response_model=PartyAssignResponse,
+)
+def assign_vanguard(
+    request: PartyAssignRequest,
+    db: Session = Depends(get_db),
+) -> PartyAssignResponse:
+    try:
+        result = assign_party_member(
+            db,
+            user_id=request.user_id,
+            hero_code=request.hero_code,
+        )
+    except HeroNotJoinedError as exc:
+        raise HTTPException(status_code=404, detail="Hero has not joined") from exc
+    return PartyAssignResponse(**result)
 
 
 @app.post("/api/v1/recovery/calculate", response_model=RecoveryCalculateResponse)
