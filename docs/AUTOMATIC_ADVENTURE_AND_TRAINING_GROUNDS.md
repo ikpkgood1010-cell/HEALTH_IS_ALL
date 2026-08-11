@@ -12,6 +12,10 @@
 - 기존 건강 기록으로 계산한 활력·HBI·길드 주화를 사용한다.
 - 자동 모험 효율은 확정 기획에 따라 70%다.
 - 건강 상태가 낮아도 음수 보상이나 손실은 없다.
+- 모험마다 5개 방 경로를 결정적으로 생성한다. 첫 방은 전투, 마지막 방은 보스,
+  보스 직전은 휴식 또는 상점이며 나머지는 확정 가중치를 따른다.
+- 탑 층수와 방 경로는 정산 이벤트의 `detail_json`에 함께 저장되므로 재조회해도
+  같은 모험 이야기가 표시된다. 기존 정산 이벤트에는 같은 ID로 경로를 복원한다.
 - 게임 이벤트는 기존 `activity_logs`에 append-only 방식으로 저장하며 이번 구현에는 DB migration이 없다.
 
 ## 보상 수령과 중복 방지
@@ -45,6 +49,9 @@
 - `POST /api/v1/game/adventures/settle`
 - `POST /api/v1/game/adventures/{adventure_id}/claim`
 - `GET /api/v1/game/facilities/training-grounds/{user_id}`
+
+`AdventureResponse`는 `tower_floor`와 5개 `rooms(position, room_type, title,
+outcome)`을 포함한다.
 
 ## 운영 안전선
 

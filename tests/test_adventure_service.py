@@ -37,6 +37,7 @@ def test_completed_window_reward_and_claim_are_idempotent():
             vitality=100,
             hbi_score=80,
             guild_coins=100,
+            tower_floor=8,
             now=now,
         )
         retry = settle_adventure(
@@ -45,11 +46,19 @@ def test_completed_window_reward_and_claim_are_idempotent():
             vitality=999,
             hbi_score=100,
             guild_coins=999,
+            tower_floor=99,
             now=now,
         )
         assert first["adventure_id"] == retry["adventure_id"]
         assert first["gross_guild_coins"] == 70
         assert retry["gross_guild_coins"] == 70
+        assert first["tower_floor"] == 8
+        assert retry["tower_floor"] == 8
+        assert first["rooms"] == retry["rooms"]
+        assert len(first["rooms"]) == 5
+        assert first["rooms"][0]["room_type"] == "COMBAT"
+        assert first["rooms"][-2]["room_type"] in {"REST", "SHOP"}
+        assert first["rooms"][-1]["room_type"] == "BOSS"
 
         claimed = claim_adventure(
             db,

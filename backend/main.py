@@ -1,13 +1,13 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
-import json
 from datetime import timedelta
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.ai_agent_service import HealthIAgentService
@@ -21,6 +21,11 @@ from backend.database import (
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
+from backend.data_idempotency_engine import (
+    DUPLICATE_RECORD_MESSAGE,
+    canonical_detail_json,
+    matches_health_record,
+)
 from backend.models import (
     AdventureClaimRequest,
     AdventureClaimResponse,
@@ -127,6 +132,47 @@ def _calc_streak_days(db: Session, user_id: str) -> int:
     return streak
 
 
+def _daily_exp_total(db: Session, user_id: str) -> int:
+    today_start, _ = _today_range()
+    return int(
+        db.query(func.coalesce(func.sum(UserExpLogModel.exp_gained), 0))
+        .filter(
+            UserExpLogModel.user_id == user_id,
+            UserExpLogModel.created_at >= today_start,
+        )
+        .scalar()
+        or 0
+    )
+
+
+def _duplicate_health_record_response(
+    db: Session,
+    *,
+    existing: ActivityLogModel,
+    req: HealthRecordRequest,
+    detail_json: str | None,
+) -> HealthRecordResponse:
+    if not matches_health_record(
+        existing,
+        user_id=req.user_id,
+        record_type=req.record_type,
+        value=req.value,
+        detail_json=detail_json,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Idempotency key was already used for a different health record",
+        )
+    return HealthRecordResponse(
+        success=True,
+        record_id=existing.activity_id,
+        exp_gained=existing.exp_gained,
+        current_daily_exp=_daily_exp_total(db, req.user_id),
+        message=DUPLICATE_RECORD_MESSAGE,
+        duplicate=True,
+    )
+
+
 @app.get("/")
 def read_root() -> dict:
     return {"message": "HEALTH IS ALL Backend Core System is Running", "version": settings.APP_VERSION}
@@ -152,6 +198,22 @@ def readyz() -> dict:
 
 @app.post("/api/v1/health/record", response_model=HealthRecordResponse)
 def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db)) -> HealthRecordResponse:
+    record_id = str(req.idempotency_key) if req.idempotency_key else f"act_{uuid4().hex[:12]}"
+    detail_json = canonical_detail_json(req.detail_data)
+    if len((detail_json or "").encode("utf-8")) > 2000:
+        raise HTTPException(status_code=422, detail="detail_data is too large")
+
+    existing_record = db.query(ActivityLogModel).filter(
+        ActivityLogModel.activity_id == record_id
+    ).first()
+    if existing_record is not None:
+        return _duplicate_health_record_response(
+            db,
+            existing=existing_record,
+            req=req,
+            detail_json=detail_json,
+        )
+
     profile = db.query(HealthIProfileModel).filter(HealthIProfileModel.user_id == req.user_id).first()
     if not profile:
         profile = HealthIProfileModel(
@@ -163,15 +225,18 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
             emotion_state="평온함",
         )
         db.add(profile)
-        db.commit()
-        db.refresh(profile)
+        try:
+            db.commit()
+            db.refresh(profile)
+        except IntegrityError:
+            # Two first requests for one anonymous ID may race. The unique
+            # user_id constraint chooses one profile; the other request reuses it.
+            db.rollback()
+            profile = db.query(HealthIProfileModel).filter(
+                HealthIProfileModel.user_id == req.user_id
+            ).one()
 
-    today_start, _ = _today_range()
-    current_daily_exp = (
-        db.query(func.coalesce(func.sum(UserExpLogModel.exp_gained), 0))
-        .filter(UserExpLogModel.user_id == req.user_id, UserExpLogModel.created_at >= today_start)
-        .scalar()
-    ) or 0
+    current_daily_exp = _daily_exp_total(db, req.user_id)
 
     latest_log = (
         db.query(UserExpLogModel)
@@ -196,11 +261,11 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
     #  오늘자 칼로리/운동/수분 집계가 정확하게 유지된다.)
     db.add(
         ActivityLogModel(
-            activity_id=f"act_{uuid4().hex[:12]}",
+            activity_id=record_id,
             user_id=req.user_id,
             record_type=req.record_type,
             value=req.value,
-            detail_json=json.dumps(req.detail_data, ensure_ascii=False) if req.detail_data else None,
+            detail_json=detail_json,
             exp_gained=exp_gained,
         )
     )
@@ -219,14 +284,29 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
         profile.level = (profile.current_exp // 300) + 1
         profile.updated_at = utc_now()
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing_record = db.query(ActivityLogModel).filter(
+            ActivityLogModel.activity_id == record_id
+        ).first()
+        if existing_record is None:
+            raise
+        return _duplicate_health_record_response(
+            db,
+            existing=existing_record,
+            req=req,
+            detail_json=detail_json,
+        )
 
     return HealthRecordResponse(
         success=True,
-        record_id=f"rec_{uuid4().hex[:12]}",
+        record_id=record_id,
         exp_gained=exp_gained,
         current_daily_exp=int(engine_res["current_daily_exp"]),
         message=engine_res["reason"],
+        duplicate=False,
     )
 
 
@@ -352,6 +432,7 @@ def settle_automatic_adventure(
         vitality=overview.vitality,
         hbi_score=overview.hbi_score,
         guild_coins=overview.guild_coins,
+        tower_floor=overview.tower_floor,
     )
     return AdventureResponse(**result)
 

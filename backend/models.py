@@ -2,16 +2,22 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID4, BaseModel, Field
 
 
 class HealthRecordRequest(BaseModel):
-    user_id: str = Field(..., examples=["user_test_001"])
-    record_type: str = Field(..., examples=["meal_log"])
-    value: float = Field(..., examples=[550.0])
+    user_id: str = Field(..., min_length=1, max_length=36, examples=["user_test_001"])
+    record_type: Literal["meal_log", "workout_log", "water_log", "habit_complete"] = Field(
+        ..., examples=["meal_log"]
+    )
+    value: float = Field(..., gt=0, examples=[550.0])
     detail_data: Optional[Dict[str, Any]] = Field(default=None)
+    idempotency_key: Optional[UUID4] = Field(
+        default=None,
+        description="Client-generated UUID reused when the same record request is retried.",
+    )
 
 
 class HealthRecordResponse(BaseModel):
@@ -20,6 +26,7 @@ class HealthRecordResponse(BaseModel):
     exp_gained: int
     current_daily_exp: int
     message: str
+    duplicate: bool = False
 
 
 class HealthIStateResponse(BaseModel):
@@ -61,6 +68,13 @@ class AdventureSettleRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 
 
+class AdventureRoomResponse(BaseModel):
+    position: int
+    room_type: str
+    title: str
+    outcome: str
+
+
 class AdventureResponse(BaseModel):
     adventure_id: str
     user_id: str
@@ -70,6 +84,8 @@ class AdventureResponse(BaseModel):
     gross_guild_coins: int
     offline_efficiency: float
     hbi_score: float
+    tower_floor: int = 1
+    rooms: List[AdventureRoomResponse] = Field(default_factory=list)
     claimed: bool
 
 

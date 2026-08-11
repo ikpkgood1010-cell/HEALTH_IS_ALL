@@ -43,7 +43,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     final provider = context.read<ApiDataProvider>();
-    await provider.logWorkout(
+    final result = await provider.logWorkout(
       _durationMinutes,
       _estimatedCalories.round(),
       exerciseCategoryGroup: _group.name.toUpperCase(),
@@ -55,14 +55,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
 
-    if (provider.lastError != null) {
+    if (provider.lastError != null || result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(provider.lastError!)),
       );
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('운동 기록을 저장했어요.')),
+      SnackBar(
+        content: Text(
+          result.duplicate ? result.message : '운동 기록을 저장했어요. 모험 활력에 반영됩니다.',
+        ),
+      ),
     );
     Navigator.pop(context);
   }

@@ -5,15 +5,16 @@
 | 익명 MVP | 완료 | `lib/anonymous_user_repository.dart`, `lib/main.dart` | 계정 이전 정책 확정 후 로그인 |
 | 하단 탭 5개 | 완료 | `lib/main_navigation_screen.dart` | 없음 |
 | 토스형 건강 UI | 1차 완료 | `lib/app_theme.dart`, `lib/home_screen.dart` | 실기기 접근성 QA |
-| 운동·식단 기록 | 완료 | `lib/health_tab_screens.dart`, `backend/main.py` | 기록 UX 고도화 |
+| 운동·식단 기록 | 완료 | `lib/health_tab_screens.dart`, `lib/diet_screen.dart`, `backend/main.py` | 수분 전용 입력 UX 고도화 |
+| 건강 기록 멱등성 | 완료 | `lib/idempotency_key.dart`, `backend/data_idempotency_engine.py`, `backend/main.py` | 앱 재시작을 넘는 오프라인 큐 연동 |
 | HBI 공식 | 완료 | `backend/game_balance_engine.py`, `lib/game_balance.dart` | 수면·스트레스 데이터 연동 |
 | 운동 27종·강도 분리 | 완료 | `backend/exercise_catalog.py`, `lib/exercise_catalog.dart` | 필요 시 DB 카탈로그화 |
 | 근육 회복 계산 | 완료 | `backend/recovery_calculator.py`, `backend/main.py` | 저장·위젯 연동 |
-| 건강 기반 길드 | 완료 | `lib/guild_screen.dart` | 실제 모험 콘텐츠 확대 |
+| 건강 기반 길드 | 완료 | `lib/guild_screen.dart` | 전투 결과 다양화·회상 화면 |
 | 자동 모험 12시간·70% | 완료 | `backend/adventure_service.py`, `backend/main.py` | 과거 구간 누적 정책 검토 |
 | 보상 중복 방지 | 완료 | `backend/adventure_service.py` | 운영 동시성 관측 |
 | 훈련장 1종 | MVP 완료 | `backend/adventure_service.py`, `lib/guild_screen.dart` | 시설 효과는 경제 검증 후 추가 |
-| 던전 가중치·안전 규칙 | 엔진·테스트 완료 | `backend/game_balance_engine.py` | 실제 방 생성·진행 저장 |
+| 던전 가중치·안전 규칙 | MVP 완료 | `backend/game_balance_engine.py`, `backend/adventure_service.py`, `lib/guild_screen.dart` | 전투 결과 다양화·회상 화면 |
 | 기억 조각·환생 | 수식·해금 기준만 반영 | 게임 엔진·길드 화면 | 초기화·복구 검증 후 실행 기능 |
 | 살아있는 길드·보스 | 방향 확정 | 기획 문서 | 전투·콘텐츠·서버 구현 |
 | 광장·날씨·지역 탐험 | 방향 확정 | 기획 문서 | 단계별 구현 |

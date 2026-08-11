@@ -27,6 +27,7 @@ class HealthIApiClient {
     required String userId,
     required String recordType,
     required double value,
+    required String idempotencyKey,
     Map<String, dynamic>? detailData,
   }) async {
     final uri = Uri.parse('$baseUrl/api/v1/health/record');
@@ -38,6 +39,7 @@ class HealthIApiClient {
             'user_id': userId,
             'record_type': recordType,
             'value': value,
+            'idempotency_key': idempotencyKey,
             if (detailData != null) 'detail_data': detailData,
           }),
         )
@@ -149,6 +151,7 @@ class HealthRecordResult {
   final int expGained;
   final int currentDailyExp;
   final String message;
+  final bool duplicate;
 
   HealthRecordResult({
     required this.success,
@@ -156,6 +159,7 @@ class HealthRecordResult {
     required this.expGained,
     required this.currentDailyExp,
     required this.message,
+    required this.duplicate,
   });
 
   factory HealthRecordResult.fromJson(Map<String, dynamic> json) {
@@ -165,6 +169,7 @@ class HealthRecordResult {
       expGained: (json['exp_gained'] as num?)?.toInt() ?? 0,
       currentDailyExp: (json['current_daily_exp'] as num?)?.toInt() ?? 0,
       message: json['message'] as String? ?? '',
+      duplicate: json['duplicate'] as bool? ?? false,
     );
   }
 }
@@ -220,6 +225,27 @@ class HealthIStatus {
   }
 }
 
+class AdventureRoom {
+  final int position;
+  final String roomType;
+  final String title;
+  final String outcome;
+
+  const AdventureRoom({
+    required this.position,
+    required this.roomType,
+    required this.title,
+    required this.outcome,
+  });
+
+  factory AdventureRoom.fromJson(Map<String, dynamic> json) => AdventureRoom(
+        position: (json['position'] as num?)?.toInt() ?? 0,
+        roomType: json['room_type'] as String? ?? 'COMBAT',
+        title: json['title'] as String? ?? '모험 경로',
+        outcome: json['outcome'] as String? ?? '',
+      );
+}
+
 class AdventureState {
   final String adventureId;
   final DateTime windowStart;
@@ -228,6 +254,8 @@ class AdventureState {
   final int grossGuildCoins;
   final double offlineEfficiency;
   final double hbiScore;
+  final int towerFloor;
+  final List<AdventureRoom> rooms;
   final bool claimed;
 
   const AdventureState({
@@ -238,6 +266,8 @@ class AdventureState {
     required this.grossGuildCoins,
     required this.offlineEfficiency,
     required this.hbiScore,
+    required this.towerFloor,
+    required this.rooms,
     required this.claimed,
   });
 
@@ -250,6 +280,11 @@ class AdventureState {
       grossGuildCoins: (json['gross_guild_coins'] as num?)?.toInt() ?? 0,
       offlineEfficiency: (json['offline_efficiency'] as num?)?.toDouble() ?? .7,
       hbiScore: (json['hbi_score'] as num?)?.toDouble() ?? 0,
+      towerFloor: (json['tower_floor'] as num?)?.toInt() ?? 1,
+      rooms: (json['rooms'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(AdventureRoom.fromJson)
+          .toList(growable: false),
       claimed: json['claimed'] as bool? ?? false,
     );
   }
@@ -262,6 +297,8 @@ class AdventureState {
         grossGuildCoins: grossGuildCoins,
         offlineEfficiency: offlineEfficiency,
         hbiScore: hbiScore,
+        towerFloor: towerFloor,
+        rooms: rooms,
         claimed: claimed ?? this.claimed,
       );
 }
