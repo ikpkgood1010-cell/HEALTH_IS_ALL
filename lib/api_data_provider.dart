@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'api_client.dart';
+import 'idempotency_key.dart';
 
 /// HEALTH IS ALL - Server-backed State Management Provider
 ///
@@ -42,6 +45,7 @@ class ApiDataProvider extends ChangeNotifier {
   TrainingGroundsStatus? _trainingGrounds;
   bool _isGuildLoading = false;
   String? _guildError;
+  final Map<String, String> _pendingRecordKeys = {};
 
   String get healthIName => _healthIName;
   int get level => _level;
@@ -140,16 +144,29 @@ class ApiDataProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> logMeal(int calories, String mealType) async {
-    await _recordActivity(
+  Future<HealthRecordResult?> logMeal(
+    int calories,
+    String mealType, {
+    double? carbs,
+    double? protein,
+    double? fat,
+    double? fiber,
+  }) async {
+    return _recordActivity(
       recordType: 'meal_log',
       value: calories.toDouble(),
-      detailData: {'meal_type': mealType},
+      detailData: {
+        'meal_type': mealType,
+        if (carbs != null) 'carbs': carbs,
+        if (protein != null) 'protein': protein,
+        if (fat != null) 'fat': fat,
+        if (fiber != null) 'fiber': fiber,
+      },
       localApply: () => _consumedCalories += calories,
     );
   }
 
-  Future<void> logWorkout(
+  Future<HealthRecordResult?> logWorkout(
     int minutes,
     int burnedCalories, {
     String? exerciseCategoryGroup,
@@ -158,7 +175,7 @@ class ApiDataProvider extends ChangeNotifier {
     int? rpe,
     String? conditionScore,
   }) async {
-    await _recordActivity(
+    return _recordActivity(
       recordType: 'workout_log',
       value: minutes.toDouble(),
       detailData: {
@@ -174,8 +191,8 @@ class ApiDataProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> addWater(double amount) async {
-    await _recordActivity(
+  Future<HealthRecordResult?> addWater(double amount) async {
+    return _recordActivity(
       recordType: 'water_log',
       value: amount,
       localApply: () => _waterLiters += amount,
@@ -185,23 +202,30 @@ class ApiDataProvider extends ChangeNotifier {
   /// 공통 기록 처리: 서버에 저장 → 성공 시 로컬 상태에도 즉시 반영(낙관적 갱신)
   /// → 최신 서버 상태로 재동기화. 서버 실패 시 로컬 상태는 건드리지 않고
   /// 에러만 노출한다 (화면 표시값과 서버 값이 어긋나는 것을 방지).
-  Future<void> _recordActivity({
+  Future<HealthRecordResult?> _recordActivity({
     required String recordType,
     required double value,
     Map<String, dynamic>? detailData,
     required VoidCallback localApply,
   }) async {
     _lastError = null;
+    final operationKey = jsonEncode([recordType, value, detailData]);
+    final idempotencyKey =
+        _pendingRecordKeys.putIfAbsent(operationKey, newIdempotencyKey);
     try {
       final result = await _api.logHealthActivity(
         userId: userId,
         recordType: recordType,
         value: value,
+        idempotencyKey: idempotencyKey,
         detailData: detailData,
       );
 
-      localApply();
-      _currentExp += result.expGained;
+      _pendingRecordKeys.remove(operationKey);
+      if (!result.duplicate) {
+        localApply();
+        _currentExp += result.expGained;
+      }
       _todayExpGained = result.currentDailyExp;
 
       final int calculatedLevel = (_currentExp ~/ 300) + 1;
@@ -215,9 +239,11 @@ class ApiDataProvider extends ChangeNotifier {
       notifyListeners();
       // 서버 기준 최신 집계(오늘자 칼로리/운동/수분/streak/감정상태)로 동기화
       await refreshStatus();
+      return result;
     } catch (e) {
       _lastError = '기록 저장에 실패했습니다. 네트워크 상태를 확인해주세요.';
       notifyListeners();
+      return null;
     }
   }
 

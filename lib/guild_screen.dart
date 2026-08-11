@@ -262,6 +262,17 @@ class _AdventureCard extends StatelessWidget {
                         value: adventure.hbiScore.toStringAsFixed(1))),
               ],
             ),
+            if (adventure.rooms.isNotEmpty) ...[
+              const Divider(height: 32),
+              Text(
+                '탑 ${adventure.towerFloor}층 탐험 경로',
+                style: AppTypography.titleMd,
+              ),
+              const SizedBox(height: 10),
+              ...adventure.rooms.map(
+                (room) => _AdventureRoomRow(room: room),
+              ),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -297,6 +308,48 @@ class _AdventureCard extends StatelessWidget {
 
   String _clock(DateTime value) =>
       '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+}
+
+class _AdventureRoomRow extends StatelessWidget {
+  final AdventureRoom room;
+
+  const _AdventureRoomRow({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (room.roomType) {
+      'EVENT' => Icons.auto_awesome_rounded,
+      'REST' => Icons.local_fire_department_rounded,
+      'SHOP' => Icons.storefront_rounded,
+      'ELITE' => Icons.shield_rounded,
+      'BOSS' => Icons.workspace_premium_rounded,
+      _ => Icons.sports_martial_arts_rounded,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: AppColors.primary100,
+            child: Icon(icon, size: 18, color: AppColors.primary700),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${room.position}. ${room.title}',
+                    style: AppTypography.bodyMd),
+                Text(room.outcome, style: AppTypography.captionSm),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TrainingGroundsCard extends StatelessWidget {

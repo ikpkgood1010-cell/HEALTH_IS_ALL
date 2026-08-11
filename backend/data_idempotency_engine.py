@@ -1,58 +1,51 @@
+"""Persistent idempotency helpers for health-record writes.
+
+The original candidate implementation kept keys in process memory.  That could
+not survive a Render restart or coordinate multiple workers.  The canonical
+runtime instead stores the client UUID directly in ``activity_logs.activity_id``
+and lets the database primary key provide the final concurrency guard.
 """
-HEALTH IS ALL - Data Idempotency Engine
-Filename: data_idempotency_engine.py
-Path: HEALTH IS ALL/backend/data_idempotency_engine.py
-Purpose: Idempotency Key 기반 중복 트랜잭션 차단 및 데이터 무결성 보장 엔진
-"""
+from __future__ import annotations
 
-import hashlib
-from typing import Dict, Any, Set
+import json
+from typing import Any
 
-class DataIdempotencyEngine:
-    """
-    트랜잭션 멱등성 보장 및 중복 검증 엔진
-    """
+from backend.database import ActivityLogModel
 
-    _processed_keys: Set[str] = set()
 
-    @classmethod
-    def execute_idempotent_transaction(
-        cls,
-        idempotency_key: str,
-        user_id: str,
-        action_type: str,
-        payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        중복 트랜잭션 여부를 판별하여 단 1회만 처리
-        """
-        # 1. 트랜잭션 고유 핑거프린트 해시 생성
-        raw_sig = f"{user_id}:{action_type}:{idempotency_key}"
-        tx_hash = hashlib.sha256(raw_sig.encode('utf-8')).hexdigest()
+DUPLICATE_RECORD_MESSAGE = "이미 건강이가 소중하게 챙겨둔 기록입니다 ✨"
 
-        # 2. 이미 처리된 키인지 검증
-        if tx_hash in cls._processed_keys:
-            return {
-                "status": "DUPLICATE_SKIPPED",
-                "idempotency_key": idempotency_key,
-                "message": "이미 수호 정령이 소중하게 챙겨둔 기록입니다 🌿 (중복 반영 차단됨)",
-                "applied": False
-            }
 
-        # 3. 신규 트랜잭션 등록 및 처리
-        cls._processed_keys.add(tx_hash)
+def canonical_detail_json(detail_data: dict[str, Any] | None) -> str | None:
+    if not detail_data:
+        return None
+    return json.dumps(
+        detail_data,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
-        return {
-            "status": "SUCCESS",
-            "idempotency_key": idempotency_key,
-            "message": "새로운 건강 기록이 정령의 정원에 정상적으로 반영되었습니다 ✨",
-            "applied": True
-        }
 
-if __name__ == "__main__":
-    engine = DataIdempotencyEngine()
-    key = "UUID-9876-4321-ABCDE"
-    res1 = engine.execute_idempotent_transaction(key, "USER_001", "ADD_WATER", {"amount_ml": 250})
-    res2 = engine.execute_idempotent_transaction(key, "USER_001", "ADD_WATER", {"amount_ml": 250})
-    print(f"[First Exec]: {res1}")
-    print(f"[Second Exec]: {res2}")
+def matches_health_record(
+    existing: ActivityLogModel,
+    *,
+    user_id: str,
+    record_type: str,
+    value: float,
+    detail_json: str | None,
+) -> bool:
+    """Return true only when a reused UUID describes the exact same record."""
+    return (
+        existing.user_id == user_id
+        and existing.record_type == record_type
+        and abs(float(existing.value) - float(value)) < 1e-9
+        and canonical_detail_json(_parse_detail(existing.detail_json)) == detail_json
+    )
+
+
+def _parse_detail(value: str | None) -> dict[str, Any] | None:
+    if not value:
+        return None
+    parsed = json.loads(value)
+    return parsed if isinstance(parsed, dict) else None

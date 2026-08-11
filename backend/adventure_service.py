@@ -7,6 +7,7 @@ new database migration or awarding duplicate currency.
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timedelta
 from math import floor
 from uuid import NAMESPACE_URL, uuid5
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from backend.config import utc_now
 from backend.database import ActivityLogModel
+from backend.game_balance_engine import dungeon_room_type
 
 
 ADVENTURE_RECORD = "game_adventure"
@@ -25,6 +27,16 @@ FACILITY_RECORD = "game_facility_investment"
 OFFLINE_EFFICIENCY = 0.70
 FACILITY_INVESTMENT_RATE = 0.20
 ADVENTURE_WINDOW_HOURS = 12
+ADVENTURE_ROOM_COUNT = 5
+
+ROOM_CONTENT = {
+    "COMBAT": ("안개 길목", "건강 기록에서 얻은 활력으로 길을 열었어요."),
+    "EVENT": ("반짝이는 샘", "작은 발견이 다음 여정을 응원해요."),
+    "REST": ("회복의 모닥불", "무리하지 않고 숨을 고르며 전진했어요."),
+    "SHOP": ("떠돌이 교환소", "보유 자원을 지키며 필요한 것만 살폈어요."),
+    "ELITE": ("수호자의 문", "균형 잡힌 기록이 단단한 관문을 넘겼어요."),
+    "BOSS": ("층의 수호자", "오늘의 건강 균형으로 안전하게 모험을 마쳤어요."),
+}
 
 
 class AdventureNotFoundError(LookupError):
@@ -66,8 +78,33 @@ def _is_claimed(db: Session, adventure_id: str) -> bool:
     ).first() is not None
 
 
+def build_adventure_rooms(adventure_id: str) -> list[dict]:
+    """Build a deterministic five-room route from the stored adventure ID."""
+    digest = hashlib.sha256(adventure_id.encode("utf-8")).digest()
+    rooms = []
+    for index in range(ADVENTURE_ROOM_COUNT):
+        room_type = dungeon_room_type(
+            digest[index],
+            position=index,
+            room_count=ADVENTURE_ROOM_COUNT,
+        )
+        title, outcome = ROOM_CONTENT[room_type]
+        rooms.append(
+            {
+                "position": index + 1,
+                "room_type": room_type,
+                "title": title,
+                "outcome": outcome,
+            }
+        )
+    return rooms
+
+
 def _adventure_response(db: Session, log: ActivityLogModel) -> dict:
     detail = _detail(log)
+    rooms = detail.get("rooms")
+    if not isinstance(rooms, list) or not rooms:
+        rooms = build_adventure_rooms(log.activity_id)
     return {
         "adventure_id": log.activity_id,
         "user_id": log.user_id,
@@ -77,6 +114,8 @@ def _adventure_response(db: Session, log: ActivityLogModel) -> dict:
         "gross_guild_coins": int(detail["gross_guild_coins"]),
         "offline_efficiency": float(detail["offline_efficiency"]),
         "hbi_score": float(detail["hbi_score"]),
+        "tower_floor": max(1, int(detail.get("tower_floor", 1))),
+        "rooms": rooms,
         "claimed": _is_claimed(db, log.activity_id),
     }
 
@@ -88,6 +127,7 @@ def settle_adventure(
     vitality: int,
     hbi_score: float,
     guild_coins: int,
+    tower_floor: int = 1,
     now: datetime | None = None,
 ) -> dict:
     """Create or return the single adventure result for a 12-hour UTC window."""
@@ -108,6 +148,8 @@ def settle_adventure(
         "gross_guild_coins": gross_coins,
         "offline_efficiency": OFFLINE_EFFICIENCY,
         "hbi_score": max(0.0, float(hbi_score)),
+        "tower_floor": max(1, int(tower_floor)),
+        "rooms": build_adventure_rooms(adventure_id),
     }
     log = ActivityLogModel(
         activity_id=adventure_id,
