@@ -29,6 +29,7 @@ from backend.data_idempotency_engine import (
 from backend.models import (
     AdventureClaimRequest,
     AdventureClaimResponse,
+    AdventureHistoryResponse,
     AdventureResponse,
     AdventureSettleRequest,
     GameOverviewResponse,
@@ -44,6 +45,7 @@ from backend.adventure_service import (
     AdventureNotFoundError,
     AdventureOwnershipError,
     adventure_window,
+    adventure_history,
     claim_adventure,
     settle_adventure,
     training_grounds_status,
@@ -435,6 +437,24 @@ def settle_automatic_adventure(
         tower_floor=overview.tower_floor,
     )
     return AdventureResponse(**result)
+
+
+@app.get(
+    "/api/v1/game/adventures/history/{user_id}",
+    response_model=AdventureHistoryResponse,
+)
+def get_adventure_history(
+    user_id: str,
+    limit: int = 5,
+    db: Session = Depends(get_db),
+) -> AdventureHistoryResponse:
+    """Replay recent saved adventures without settling or awarding anything."""
+    return AdventureHistoryResponse(
+        items=[
+            AdventureResponse(**item)
+            for item in adventure_history(db, user_id=user_id, limit=limit)
+        ]
+    )
 
 
 @app.post(

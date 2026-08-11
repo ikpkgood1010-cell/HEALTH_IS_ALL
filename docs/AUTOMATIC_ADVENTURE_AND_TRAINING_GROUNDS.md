@@ -33,6 +33,14 @@
   - Lv.1 → Lv.2: 100
   - 이후 레벨 요구량: 레벨마다 50 증가
 - 초기 MVP에서는 시설이 추가 보상 배율을 만들지 않는다. 복리형 인플레이션을 막고 성장 진행도를 먼저 검증한다.
+- 시설 레벨 1/3/6/10에서 들판 훈련터/나무 훈련장/돌담 연무장/수호자의
+  훈련관으로 외형 설명이 바뀐다. 이 변화는 시각적 피드백이며 경제 배율은 없다.
+
+## 최근 모험 회상
+
+- 최근 저장된 모험을 최신순으로 최대 5개 표시한다.
+- 회상은 저장된 `game_adventure` 이벤트만 읽고 정산·지급을 실행하지 않는다.
+- 탑 층수, 마지막 방, 방 개수, 주화, 보상 수령 여부를 보여준다.
 
 ## 저장 이벤트
 
@@ -49,6 +57,7 @@
 - `POST /api/v1/game/adventures/settle`
 - `POST /api/v1/game/adventures/{adventure_id}/claim`
 - `GET /api/v1/game/facilities/training-grounds/{user_id}`
+- `GET /api/v1/game/adventures/history/{user_id}?limit=5`
 
 `AdventureResponse`는 `tower_floor`와 5개 `rooms(position, room_type, title,
 outcome)`을 포함한다.

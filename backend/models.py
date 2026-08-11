@@ -89,6 +89,10 @@ class AdventureResponse(BaseModel):
     claimed: bool
 
 
+class AdventureHistoryResponse(BaseModel):
+    items: List[AdventureResponse] = Field(default_factory=list)
+
+
 class AdventureClaimRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 
@@ -112,6 +116,10 @@ class TrainingGroundsResponse(BaseModel):
     progress_ratio: float
     guild_coin_balance: int
     description: str
+    stage_code: str
+    stage_name: str
+    stage_message: str
+    next_milestone_level: Optional[int] = None
 
 
 class RecoveryConditionRequest(BaseModel):

@@ -86,6 +86,10 @@ class _GuildScreenState extends State<GuildScreen> {
             Text('길드 시설', style: AppTypography.titleMd),
             const SizedBox(height: 8),
             _TrainingGroundsCard(facility: facility),
+            const SizedBox(height: 20),
+            Text('지난 모험 회상', style: AppTypography.titleMd),
+            const SizedBox(height: 8),
+            _AdventureHistoryCard(items: data.adventureHistory),
             if (data.guildError != null) ...[
               const SizedBox(height: 12),
               _InfoBanner(message: data.guildError!),
@@ -382,9 +386,10 @@ class _TrainingGroundsCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('훈련장', style: AppTypography.titleMd),
+                      Text(value?.stageName ?? '훈련장',
+                          style: AppTypography.titleMd),
                       Text(
-                        value == null ? '서버 연결 대기 중' : 'Lv. ${value.level}',
+                        value == null ? '서버 연결 대기 중' : '훈련장 Lv. ${value.level}',
                         style: AppTypography.captionSm,
                       ),
                     ],
@@ -410,9 +415,117 @@ class _TrainingGroundsCard extends StatelessWidget {
                   : '다음 레벨까지 ${value.nextLevelCost - value.currentLevelProgress} 주화',
               style: AppTypography.captionSm,
             ),
+            if (value != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(value.stageMessage, style: AppTypography.bodyMd),
+              ),
+              if (value.nextMilestoneLevel != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '다음 모습은 훈련장 Lv. ${value.nextMilestoneLevel}에서 열려요.',
+                  style: AppTypography.captionSm,
+                ),
+              ],
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AdventureHistoryCard extends StatelessWidget {
+  final List<AdventureState> items;
+
+  const _AdventureHistoryCard({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Text('완료한 모험이 생기면 건강 기록의 여정이 이곳에 남아요.'),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              _AdventureMemoryRow(adventure: items[index]),
+              if (index != items.length - 1) const Divider(height: 24),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdventureMemoryRow extends StatelessWidget {
+  final AdventureState adventure;
+
+  const _AdventureMemoryRow({required this.adventure});
+
+  @override
+  Widget build(BuildContext context) {
+    final bossName =
+        adventure.rooms.isEmpty ? '모험 경로' : adventure.rooms.last.title;
+    final date = adventure.windowEnd.toLocal();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          backgroundColor: adventure.claimed
+              ? AppColors.primary100
+              : const Color(0xFFFFF6D8),
+          child: Icon(
+            adventure.claimed
+                ? Icons.auto_stories_rounded
+                : Icons.pending_actions_rounded,
+            color: adventure.claimed
+                ? AppColors.primary700
+                : const Color(0xFF9A6A00),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('탑 ${adventure.towerFloor}층 · $bossName',
+                  style: AppTypography.bodyMd
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(
+                '${date.month}월 ${date.day}일 · 방 ${adventure.rooms.length}개 · '
+                '주화 ${adventure.grossGuildCoins}',
+                style: AppTypography.captionSm,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                adventure.claimed ? '보상 수령 완료' : '아직 받을 보상이 있어요',
+                style: AppTypography.captionSm.copyWith(
+                  color: adventure.claimed
+                      ? AppColors.primary700
+                      : const Color(0xFF9A6A00),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

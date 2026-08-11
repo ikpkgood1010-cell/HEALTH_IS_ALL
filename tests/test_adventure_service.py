@@ -8,6 +8,7 @@ from backend.adventure_service import (
     ADVENTURE_RECORD,
     CLAIM_RECORD,
     FACILITY_RECORD,
+    adventure_history,
     adventure_window,
     claim_adventure,
     settle_adventure,
@@ -90,6 +91,58 @@ def test_completed_window_reward_and_claim_are_idempotent():
         facility = training_grounds_status(db, user_id="service_test_user")
         assert facility["total_invested"] == 14
         assert facility["guild_coin_balance"] == 56
+        assert facility["stage_code"] == "FIELD_CAMP"
+        assert facility["stage_name"] == "들판 훈련터"
+        assert facility["next_milestone_level"] == 3
+
+        later = settle_adventure(
+            db,
+            user_id="service_test_user",
+            vitality=80,
+            hbi_score=70,
+            guild_coins=50,
+            tower_floor=9,
+            now=datetime(2026, 8, 11, 3, 0),
+        )
+        history = adventure_history(db, user_id="service_test_user")
+        assert [item["adventure_id"] for item in history] == [
+            later["adventure_id"],
+            first["adventure_id"],
+        ]
+        assert history[1]["claimed"] is True
+    finally:
+        db.close()
+        engine.dispose()
+
+
+def test_facility_visual_stage_changes_without_reward_multiplier():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    try:
+        for index in range(3):
+            db.add(
+                ActivityLogModel(
+                    activity_id=f"facility-stage-{index}",
+                    user_id="facility_stage_user",
+                    record_type=FACILITY_RECORD,
+                    value=100,
+                    detail_json="{}",
+                    exp_gained=0,
+                )
+            )
+        db.commit()
+
+        facility = training_grounds_status(db, user_id="facility_stage_user")
+        assert facility["level"] == 3
+        assert facility["stage_code"] == "TIMBER_YARD"
+        assert facility["stage_name"] == "나무 훈련장"
+        assert facility["next_milestone_level"] == 6
+        assert "reward_multiplier" not in facility
     finally:
         db.close()
         engine.dispose()
