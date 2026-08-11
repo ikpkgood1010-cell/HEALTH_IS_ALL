@@ -36,6 +36,8 @@ from backend.models import (
     HealthIStateResponse,
     HealthRecordRequest,
     HealthRecordResponse,
+    HeroResponse,
+    HeroRosterResponse,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
     TrainingGroundsResponse,
@@ -47,6 +49,7 @@ from backend.adventure_service import (
     adventure_window,
     adventure_history,
     claim_adventure,
+    hero_roster,
     settle_adventure,
     training_grounds_status,
 )
@@ -485,6 +488,20 @@ def get_training_grounds(
     db: Session = Depends(get_db),
 ) -> TrainingGroundsResponse:
     return TrainingGroundsResponse(**training_grounds_status(db, user_id=user_id))
+
+
+@app.get(
+    "/api/v1/game/heroes/{user_id}",
+    response_model=HeroRosterResponse,
+)
+def get_hero_roster(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> HeroRosterResponse:
+    """Return heroes earned from deterministic story milestones."""
+    return HeroRosterResponse(
+        items=[HeroResponse(**item) for item in hero_roster(db, user_id=user_id)]
+    )
 
 
 @app.post("/api/v1/recovery/calculate", response_model=RecoveryCalculateResponse)

@@ -48,6 +48,10 @@ class _GuildScreenState extends State<GuildScreen> {
           children: [
             _GuildHero(guild: guild),
             const SizedBox(height: 16),
+            Text('나의 원정대', style: AppTypography.titleMd),
+            const SizedBox(height: 8),
+            _HeroRosterCard(heroes: data.heroRoster),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -164,35 +168,204 @@ class _GuildHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      height: 260,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [Color(0xFF00B89C), Color(0xFF2D8CFF)],
+          colors: [Color(0xFF8EDCCA), Color(0xFF77B9E8), Color(0xFFFFD790)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -36,
+            top: -48,
+            child: Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: .24),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 24,
+            bottom: 35,
+            child: Icon(
+              Icons.castle_rounded,
+              color: const Color(0xFF315C68).withValues(alpha: .78),
+              size: 110,
+            ),
+          ),
+          Positioned(
+            left: -24,
+            right: -24,
+            bottom: -52,
+            child: Container(
+              height: 108,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4E9A65),
+                borderRadius: BorderRadius.circular(100),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x33406455), blurRadius: 12),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF244D55).withValues(alpha: .78),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Text(
+                    '생명의 탑 원정대',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  guild.stageName,
+                  style: AppTypography.displayLg.copyWith(
+                    color: const Color(0xFF173D45),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${guild.environmentName} · 탑 ${guild.towerFloor}층 탐험 중',
+                  style: AppTypography.bodyMd.copyWith(
+                    color: const Color(0xFF244D55),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 230,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .58),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      guild.environmentMessage,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.captionSm.copyWith(
+                        color: const Color(0xFF315C68),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroRosterCard extends StatelessWidget {
+  final List<HeroCompanion> heroes;
+
+  const _HeroRosterCard({required this.heroes});
+
+  @override
+  Widget build(BuildContext context) {
+    final hero = heroes.isEmpty ? null : heroes.first;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF1C7), Color(0xFFE8F7D8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.castle_rounded, color: Colors.white, size: 38),
-          const SizedBox(height: 28),
-          Text(
-            guild.stageName,
-            style: AppTypography.displayLg.copyWith(color: Colors.white),
+        border: Border.all(color: const Color(0xFFB5D89D)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18305A42),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${guild.environmentName} · 탑 ${guild.towerFloor}층 탐험 중',
-            style: AppTypography.bodyMd.copyWith(
-              color: Colors.white.withValues(alpha: .9),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 86,
+            height: 100,
+            decoration: BoxDecoration(
+              color: const Color(0xFF8DCB78),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Icon(
+              hero == null
+                  ? Icons.person_add_alt_1_rounded
+                  : Icons.hiking_rounded,
+              size: 52,
+              color: Colors.white,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            guild.environmentMessage,
-            style: AppTypography.bodyMd.copyWith(color: Colors.white),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hero == null
+                      ? '첫 용사를 기다리는 중'
+                      : '${hero.title} · ${hero.name}',
+                  style: AppTypography.titleMd.copyWith(
+                    color: const Color(0xFF315538),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  hero == null
+                      ? '건강 기록으로 활력이 생긴 첫 모험을 마치면 이야기 속 용사가 확정 합류해요.'
+                      : hero.joinMessage,
+                  style: AppTypography.bodyMd.copyWith(
+                    color: const Color(0xFF4C6550),
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .72),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    hero == null ? '확률형 뽑기 없음' : '${hero.role} · 숲 속성',
+                    style: AppTypography.captionSm.copyWith(
+                      color: const Color(0xFF3E6A46),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -289,8 +462,12 @@ class _AdventureCard extends StatelessWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              '주화 ${result.guildCoinsReceived}개 수령 · '
-                              '훈련장 ${result.facilityInvested}개 투자',
+                              result.joinedHero == null
+                                  ? '주화 ${result.guildCoinsReceived}개 수령 · '
+                                      '훈련장 ${result.facilityInvested}개 투자'
+                                  : '${result.joinedHero!.title} '
+                                      '${result.joinedHero!.name} 합류! · '
+                                      '주화 ${result.guildCoinsReceived}개 수령',
                             ),
                           ),
                         );
@@ -345,7 +522,18 @@ class _AdventureRoomRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${room.position}. ${room.title}',
-                    style: AppTypography.bodyMd),
+                    style: AppTypography.bodyMd.copyWith(
+                      fontWeight: FontWeight.w700,
+                    )),
+                const SizedBox(height: 2),
+                Text(
+                  room.resultTitle,
+                  style: AppTypography.captionSm.copyWith(
+                    color: AppColors.primary700,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Text(room.outcome, style: AppTypography.captionSm),
               ],
             ),

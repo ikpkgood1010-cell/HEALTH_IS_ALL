@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 void main() {
   Widget createWidgetUnderTest() {
     var adventureSettled = false;
+    var heroJoined = false;
     final apiClient = HealthIApiClient(
       client: MockClient((request) async {
         if (request.url.path.contains('/health-i/status/')) {
@@ -85,11 +86,38 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path.contains('/game/heroes/')) {
+          return http.Response(
+            heroJoined
+                ? '{"items":[{"hero_code":"FOREST_SCOUT_ARU",'
+                    '"name":"아루","title":"새싹 길잡이",'
+                    '"role":"탐험 용사","element":"FOREST",'
+                    '"rarity":"STORY",'
+                    '"join_source":"FIRST_ADVENTURE_CLAIM",'
+                    '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
+                    '"gameplay_effect":"NONE",'
+                    '"joined_at":"2026-08-10T12:00:00",'
+                    '"source_adventure_id":"adv-test"}]}'
+                : '{"items":[]}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         if (request.url.path.endsWith('/claim')) {
+          heroJoined = true;
           return http.Response(
             '{"adventure_id":"adv-test","claim_id":"claim-test",'
             '"already_claimed":false,"gross_guild_coins":28,'
-            '"facility_invested":5,"guild_coins_received":23}',
+            '"facility_invested":5,"guild_coins_received":23,'
+            '"joined_hero":{"hero_code":"FOREST_SCOUT_ARU",'
+            '"name":"아루","title":"새싹 길잡이",'
+            '"role":"탐험 용사","element":"FOREST",'
+            '"rarity":"STORY",'
+            '"join_source":"FIRST_ADVENTURE_CLAIM",'
+            '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
+            '"gameplay_effect":"NONE",'
+            '"joined_at":"2026-08-10T12:00:00",'
+            '"source_adventure_id":"adv-test"}}',
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
@@ -129,9 +157,14 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('길드'));
+    await tester.tap(find.byIcon(Icons.castle_outlined));
     await tester.pumpAndSettle();
 
+    expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        3);
+    await tester.scrollUntilVisible(find.text('자동 모험'), 260);
+    await tester.pumpAndSettle();
     expect(find.text('자동 모험'), findsOneWidget);
     expect(find.text('모험대가 돌아왔어요'), findsOneWidget);
     expect(find.text('탑 4층 탐험 경로'), findsOneWidget);
@@ -143,11 +176,16 @@ void main() {
     await tester.tap(find.text('안전하게 보상 받기'));
     await tester.pumpAndSettle();
     expect(find.text('보상을 받았어요'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('나의 원정대'), -300);
+    await tester.pumpAndSettle();
+    expect(find.text('새싹 길잡이 · 아루'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('길드 시설'));
+    await tester.scrollUntilVisible(find.text('길드 시설'), 300);
     await tester.pumpAndSettle();
     expect(find.text('길드 시설'), findsOneWidget);
     expect(find.text('들판 훈련터'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('지난 모험 회상'), 300);
+    await tester.pumpAndSettle();
     expect(find.text('지난 모험 회상'), findsOneWidget);
     expect(find.text('탑 4층 · 층의 수호자'), findsOneWidget);
   });

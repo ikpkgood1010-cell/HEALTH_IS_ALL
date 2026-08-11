@@ -72,6 +72,8 @@ class AdventureRoomResponse(BaseModel):
     position: int
     room_type: str
     title: str
+    result_code: str
+    result_title: str
     outcome: str
 
 
@@ -97,6 +99,24 @@ class AdventureClaimRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 
 
+class HeroResponse(BaseModel):
+    hero_code: str
+    name: str
+    title: str
+    role: str
+    element: str
+    rarity: str
+    join_source: str
+    join_message: str
+    gameplay_effect: str
+    joined_at: datetime
+    source_adventure_id: str
+
+
+class HeroRosterResponse(BaseModel):
+    items: List[HeroResponse] = Field(default_factory=list)
+
+
 class AdventureClaimResponse(BaseModel):
     adventure_id: str
     claim_id: str
@@ -104,6 +124,7 @@ class AdventureClaimResponse(BaseModel):
     gross_guild_coins: int
     facility_invested: int
     guild_coins_received: int
+    joined_hero: Optional[HeroResponse] = None
 
 
 class TrainingGroundsResponse(BaseModel):

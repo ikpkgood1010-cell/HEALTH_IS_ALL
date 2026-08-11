@@ -8,9 +8,11 @@ from backend.adventure_service import (
     ADVENTURE_RECORD,
     CLAIM_RECORD,
     FACILITY_RECORD,
+    HERO_JOIN_RECORD,
     adventure_history,
     adventure_window,
     claim_adventure,
+    hero_roster,
     settle_adventure,
     training_grounds_status,
 )
@@ -60,6 +62,8 @@ def test_completed_window_reward_and_claim_are_idempotent():
         assert first["rooms"][0]["room_type"] == "COMBAT"
         assert first["rooms"][-2]["room_type"] in {"REST", "SHOP"}
         assert first["rooms"][-1]["room_type"] == "BOSS"
+        assert all(room["result_code"] for room in first["rooms"])
+        assert all(room["result_title"] for room in first["rooms"])
 
         claimed = claim_adventure(
             db,
@@ -73,12 +77,19 @@ def test_completed_window_reward_and_claim_are_idempotent():
         )
         assert claimed["facility_invested"] == 14
         assert claimed["guild_coins_received"] == 56
+        assert claimed["joined_hero"]["hero_code"] == "FOREST_SCOUT_ARU"
+        assert claimed["joined_hero"]["gameplay_effect"] == "NONE"
         assert claimed_again["already_claimed"] is True
 
         assert db.query(ActivityLogModel).filter(
             ActivityLogModel.user_id == "service_test_user",
             ActivityLogModel.record_type == ADVENTURE_RECORD,
         ).count() == 1
+        assert db.query(ActivityLogModel).filter(
+            ActivityLogModel.user_id == "service_test_user",
+            ActivityLogModel.record_type == HERO_JOIN_RECORD,
+        ).count() == 1
+        assert hero_roster(db, user_id="service_test_user")[0]["name"] == "아루"
         assert db.query(ActivityLogModel).filter(
             ActivityLogModel.user_id == "service_test_user",
             ActivityLogModel.record_type == CLAIM_RECORD,
@@ -143,6 +154,57 @@ def test_facility_visual_stage_changes_without_reward_multiplier():
         assert facility["stage_name"] == "나무 훈련장"
         assert facility["next_milestone_level"] == 6
         assert "reward_multiplier" not in facility
+    finally:
+        db.close()
+        engine.dispose()
+
+
+def test_legacy_stored_rooms_are_enriched_without_changing_rewards():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    try:
+        adventure = settle_adventure(
+            db,
+            user_id="legacy_room_user",
+            vitality=50,
+            hbi_score=60,
+            guild_coins=40,
+            now=datetime(2026, 8, 10, 15, 0),
+        )
+        record = db.query(ActivityLogModel).filter(
+            ActivityLogModel.activity_id == adventure["adventure_id"]
+        ).one()
+        detail = {
+            "window_start": "2026-08-10T00:00:00",
+            "window_end": "2026-08-10T12:00:00",
+            "vitality": 50,
+            "gross_guild_coins": 28,
+            "offline_efficiency": 0.7,
+            "hbi_score": 60,
+            "tower_floor": 1,
+            "rooms": [
+                {
+                    "position": 1,
+                    "room_type": "COMBAT",
+                    "title": "안개 길목",
+                    "outcome": "기존 기록",
+                }
+            ],
+        }
+        import json
+
+        record.detail_json = json.dumps(detail, ensure_ascii=False)
+        db.commit()
+
+        replay = adventure_history(db, user_id="legacy_room_user")[0]
+        assert replay["gross_guild_coins"] == 28
+        assert len(replay["rooms"]) == 5
+        assert all(room["result_code"] for room in replay["rooms"])
     finally:
         db.close()
         engine.dispose()
