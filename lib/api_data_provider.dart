@@ -43,6 +43,7 @@ class ApiDataProvider extends ChangeNotifier {
   AdventureState? _adventure;
   AdventureClaimResult? _lastAdventureClaim;
   TrainingGroundsStatus? _trainingGrounds;
+  List<AdventureState> _adventureHistory = const [];
   bool _isGuildLoading = false;
   String? _guildError;
   final Map<String, String> _pendingRecordKeys = {};
@@ -68,6 +69,7 @@ class ApiDataProvider extends ChangeNotifier {
   AdventureState? get adventure => _adventure;
   AdventureClaimResult? get lastAdventureClaim => _lastAdventureClaim;
   TrainingGroundsStatus? get trainingGrounds => _trainingGrounds;
+  List<AdventureState> get adventureHistory => _adventureHistory;
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
 
@@ -98,18 +100,20 @@ class ApiDataProvider extends ChangeNotifier {
     }
   }
 
-  /// Loads the current automatic adventure and the persistent training ground.
+  /// Loads the current adventure, persistent facility, and read-only recall.
   Future<void> refreshGuild() async {
     _isGuildLoading = true;
     _guildError = null;
     notifyListeners();
     try {
+      final settledAdventure = await _api.settleAdventure(userId);
       final results = await Future.wait<Object>([
-        _api.settleAdventure(userId),
         _api.fetchTrainingGrounds(userId),
+        _api.fetchAdventureHistory(userId),
       ]);
-      _adventure = results[0] as AdventureState;
-      _trainingGrounds = results[1] as TrainingGroundsStatus;
+      _adventure = settledAdventure;
+      _trainingGrounds = results[0] as TrainingGroundsStatus;
+      _adventureHistory = results[1] as List<AdventureState>;
     } catch (_) {
       _guildError = '길드 서버와 연결하지 못했어요. 건강 기반 미리보기는 계속 볼 수 있어요.';
     } finally {
@@ -133,7 +137,12 @@ class ApiDataProvider extends ChangeNotifier {
       );
       _lastAdventureClaim = result;
       _adventure = current.copyWith(claimed: true);
-      _trainingGrounds = await _api.fetchTrainingGrounds(userId);
+      final results = await Future.wait<Object>([
+        _api.fetchTrainingGrounds(userId),
+        _api.fetchAdventureHistory(userId),
+      ]);
+      _trainingGrounds = results[0] as TrainingGroundsStatus;
+      _adventureHistory = results[1] as List<AdventureState>;
       return result;
     } catch (_) {
       _guildError = '보상을 받지 못했어요. 잠시 후 다시 시도해 주세요.';

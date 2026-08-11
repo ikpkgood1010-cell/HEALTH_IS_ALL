@@ -139,6 +139,30 @@ class HealthIApiClient {
     );
   }
 
+  /// Returns saved adventures only. This endpoint never settles or rewards.
+  Future<List<AdventureState>> fetchAdventureHistory(
+    String userId, {
+    int limit = 5,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/game/adventures/history/$userId?limit=$limit',
+    );
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '모험 회상 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    final json =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    return (json['items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AdventureState.fromJson)
+        .toList(growable: false);
+  }
+
   void dispose() {
     _client.close();
   }
@@ -340,6 +364,10 @@ class TrainingGroundsStatus {
   final double progressRatio;
   final int guildCoinBalance;
   final String description;
+  final String stageCode;
+  final String stageName;
+  final String stageMessage;
+  final int? nextMilestoneLevel;
 
   const TrainingGroundsStatus({
     required this.level,
@@ -349,6 +377,10 @@ class TrainingGroundsStatus {
     required this.progressRatio,
     required this.guildCoinBalance,
     required this.description,
+    required this.stageCode,
+    required this.stageName,
+    required this.stageMessage,
+    required this.nextMilestoneLevel,
   });
 
   factory TrainingGroundsStatus.fromJson(Map<String, dynamic> json) {
@@ -361,6 +393,11 @@ class TrainingGroundsStatus {
       progressRatio: (json['progress_ratio'] as num?)?.toDouble() ?? 0,
       guildCoinBalance: (json['guild_coin_balance'] as num?)?.toInt() ?? 0,
       description: json['description'] as String? ?? '',
+      stageCode: json['stage_code'] as String? ?? 'FIELD_CAMP',
+      stageName: json['stage_name'] as String? ?? '들판 훈련터',
+      stageMessage:
+          json['stage_message'] as String? ?? '작은 훈련터가 건강한 모험을 차근차근 기억하고 있어요.',
+      nextMilestoneLevel: (json['next_milestone_level'] as num?)?.toInt(),
     );
   }
 }

@@ -235,6 +235,52 @@ def claim_adventure(db: Session, *, user_id: str, adventure_id: str) -> dict:
     return result
 
 
+def adventure_history(db: Session, *, user_id: str, limit: int = 5) -> list[dict]:
+    """Return recent stored adventures without creating or changing game data."""
+    logs = (
+        db.query(ActivityLogModel)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.record_type == ADVENTURE_RECORD,
+        )
+        .order_by(ActivityLogModel.logged_at.desc())
+        .limit(max(1, min(int(limit), 20)))
+        .all()
+    )
+    return [_adventure_response(db, log) for log in logs]
+
+
+def _facility_stage(level: int) -> dict:
+    """Describe visible facility growth without adding an economy multiplier."""
+    if level >= 10:
+        return {
+            "stage_code": "GUARDIAN_HALL",
+            "stage_name": "수호자의 훈련관",
+            "stage_message": "오래 쌓아온 건강 기록이 든든한 훈련관을 완성했어요.",
+            "next_milestone_level": None,
+        }
+    if level >= 6:
+        return {
+            "stage_code": "STONE_COURT",
+            "stage_name": "돌담 연무장",
+            "stage_message": "꾸준한 모험 덕분에 비바람에도 든든한 연무장이 됐어요.",
+            "next_milestone_level": 10,
+        }
+    if level >= 3:
+        return {
+            "stage_code": "TIMBER_YARD",
+            "stage_name": "나무 훈련장",
+            "stage_message": "조금씩 모은 주화로 안전한 훈련 도구를 갖췄어요.",
+            "next_milestone_level": 6,
+        }
+    return {
+        "stage_code": "FIELD_CAMP",
+        "stage_name": "들판 훈련터",
+        "stage_message": "작은 훈련터가 건강한 모험을 차근차근 기억하고 있어요.",
+        "next_milestone_level": 3,
+    }
+
+
 def training_grounds_status(db: Session, *, user_id: str) -> dict:
     total = int(db.query(func.coalesce(func.sum(ActivityLogModel.value), 0)).filter(
         ActivityLogModel.user_id == user_id,
@@ -263,4 +309,5 @@ def training_grounds_status(db: Session, *, user_id: str) -> dict:
         "progress_ratio": round(remainder / next_cost, 4),
         "guild_coin_balance": balance,
         "description": "모험 보상의 20%가 자동 적립되는 길드 기초 시설",
+        **_facility_stage(level),
     }

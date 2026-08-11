@@ -184,6 +184,15 @@ def test_health_record_to_adventure_and_training_ground_journey(journey_runtime)
     ).json()
     assert facility["total_invested"] == claimed.json()["facility_invested"]
     assert facility["guild_coin_balance"] == claimed.json()["guild_coins_received"]
+    assert facility["stage_name"] == "들판 훈련터"
+
+    history = client.get(
+        f"/api/v1/game/adventures/history/{user_id}?limit=5"
+    )
+    assert history.status_code == 200
+    assert len(history.json()["items"]) == 1
+    assert history.json()["items"][0]["adventure_id"] == adventure["adventure_id"]
+    assert history.json()["items"][0]["claimed"] is True
 
 
 def test_calculate_recovery_endpoint(client):

@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 void main() {
   Widget createWidgetUnderTest() {
+    var adventureSettled = false;
     final apiClient = HealthIApiClient(
       client: MockClient((request) async {
         if (request.url.path.contains('/health-i/status/')) {
@@ -27,6 +28,8 @@ void main() {
           );
         }
         if (request.url.path == '/api/v1/game/adventures/settle') {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          adventureSettled = true;
           return http.Response(
             '{"adventure_id":"adv-test","user_id":"anon_test",'
             '"window_start":"2026-08-10T00:00:00",'
@@ -47,12 +50,37 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path.contains('/game/adventures/history/')) {
+          if (!adventureSettled) {
+            return http.Response(
+              '{"items":[]}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response(
+            '{"items":[{"adventure_id":"adv-test","user_id":"anon_test",'
+            '"window_start":"2026-08-10T00:00:00",'
+            '"window_end":"2026-08-10T12:00:00","vitality":40,'
+            '"gross_guild_coins":28,"offline_efficiency":0.7,'
+            '"hbi_score":52.5,"tower_floor":4,"rooms":['
+            '{"position":1,"room_type":"COMBAT","title":"안개 길목",'
+            '"outcome":"활력으로 길을 열었어요."},'
+            '{"position":5,"room_type":"BOSS","title":"층의 수호자",'
+            '"outcome":"모험을 마쳤어요."}],"claimed":true}]}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         if (request.url.path.contains('/facilities/training-grounds/')) {
           return http.Response(
             '{"code":"TRAINING_GROUNDS","name":"훈련장","level":2,'
             '"total_invested":120,"current_level_progress":20,'
             '"next_level_cost":150,"progress_ratio":0.1333,'
-            '"guild_coin_balance":80,"description":"기초 시설"}',
+            '"guild_coin_balance":80,"description":"기초 시설",'
+            '"stage_code":"FIELD_CAMP","stage_name":"들판 훈련터",'
+            '"stage_message":"건강한 모험을 기억하고 있어요.",'
+            '"next_milestone_level":3}',
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
@@ -83,7 +111,7 @@ void main() {
 
   testWidgets('확정된 하단 탭 5개를 순서대로 표시한다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     for (final label in ['홈', '운동', '식단', '길드', '마이']) {
       expect(
@@ -99,7 +127,7 @@ void main() {
 
   testWidgets('길드 탭에서 자동 모험과 훈련장을 표시하고 보상을 받는다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('길드'));
     await tester.pumpAndSettle();
@@ -119,6 +147,8 @@ void main() {
     await tester.ensureVisible(find.text('길드 시설'));
     await tester.pumpAndSettle();
     expect(find.text('길드 시설'), findsOneWidget);
-    expect(find.text('훈련장'), findsOneWidget);
+    expect(find.text('들판 훈련터'), findsOneWidget);
+    expect(find.text('지난 모험 회상'), findsOneWidget);
+    expect(find.text('탑 4층 · 층의 수호자'), findsOneWidget);
   });
 }
