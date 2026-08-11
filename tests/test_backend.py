@@ -171,6 +171,7 @@ def test_health_record_to_adventure_and_training_ground_journey(journey_runtime)
     assert adventure["rooms"][0]["room_type"] == "COMBAT"
     assert adventure["rooms"][-2]["room_type"] in {"REST", "SHOP"}
     assert adventure["rooms"][-1]["room_type"] == "BOSS"
+    assert all(room["result_title"] for room in adventure["rooms"])
 
     claimed = client.post(
         f"/api/v1/game/adventures/{adventure['adventure_id']}/claim",
@@ -178,6 +179,14 @@ def test_health_record_to_adventure_and_training_ground_journey(journey_runtime)
     )
     assert claimed.status_code == 200
     assert claimed.json()["facility_invested"] > 0
+    assert claimed.json()["joined_hero"]["name"] == "아루"
+    assert claimed.json()["joined_hero"]["gameplay_effect"] == "NONE"
+
+    roster = client.get(f"/api/v1/game/heroes/{user_id}")
+    assert roster.status_code == 200
+    assert [item["hero_code"] for item in roster.json()["items"]] == [
+        "FOREST_SCOUT_ARU"
+    ]
 
     facility = client.get(
         f"/api/v1/game/facilities/training-grounds/{user_id}"
@@ -244,6 +253,10 @@ def test_automatic_adventure_is_idempotent_and_claims_once(client):
     assert first_claim.json()["claim_id"] == retry_claim.json()["claim_id"]
     assert first_claim.json()["already_claimed"] is False
     assert retry_claim.json()["already_claimed"] is True
+    assert first_claim.json()["joined_hero"] is None
+    assert client.get(
+        "/api/v1/game/heroes/adventure_test_user"
+    ).json()["items"] == []
     assert (
         first_claim.json()["guild_coins_received"]
         + first_claim.json()["facility_invested"]

@@ -139,6 +139,25 @@ class HealthIApiClient {
     );
   }
 
+  /// Returns story-earned heroes. Reading the roster never unlocks a hero.
+  Future<List<HeroCompanion>> fetchHeroRoster(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/heroes/$userId');
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '모험대 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    final json =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    return (json['items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(HeroCompanion.fromJson)
+        .toList(growable: false);
+  }
+
   /// Returns saved adventures only. This endpoint never settles or rewards.
   Future<List<AdventureState>> fetchAdventureHistory(
     String userId, {
@@ -253,12 +272,16 @@ class AdventureRoom {
   final int position;
   final String roomType;
   final String title;
+  final String resultCode;
+  final String resultTitle;
   final String outcome;
 
   const AdventureRoom({
     required this.position,
     required this.roomType,
     required this.title,
+    required this.resultCode,
+    required this.resultTitle,
     required this.outcome,
   });
 
@@ -266,7 +289,43 @@ class AdventureRoom {
         position: (json['position'] as num?)?.toInt() ?? 0,
         roomType: json['room_type'] as String? ?? 'COMBAT',
         title: json['title'] as String? ?? '모험 경로',
+        resultCode: json['result_code'] as String? ?? 'STORY_RESULT',
+        resultTitle: json['result_title'] as String? ?? '모험 기록',
         outcome: json['outcome'] as String? ?? '',
+      );
+}
+
+class HeroCompanion {
+  final String heroCode;
+  final String name;
+  final String title;
+  final String role;
+  final String element;
+  final String joinMessage;
+  final String gameplayEffect;
+  final DateTime joinedAt;
+
+  const HeroCompanion({
+    required this.heroCode,
+    required this.name,
+    required this.title,
+    required this.role,
+    required this.element,
+    required this.joinMessage,
+    required this.gameplayEffect,
+    required this.joinedAt,
+  });
+
+  factory HeroCompanion.fromJson(Map<String, dynamic> json) => HeroCompanion(
+        heroCode: json['hero_code'] as String? ?? '',
+        name: json['name'] as String? ?? '이름 없는 용사',
+        title: json['title'] as String? ?? '길드 동료',
+        role: json['role'] as String? ?? '탐험 용사',
+        element: json['element'] as String? ?? 'FOREST',
+        joinMessage: json['join_message'] as String? ?? '',
+        gameplayEffect: json['gameplay_effect'] as String? ?? 'NONE',
+        joinedAt: DateTime.tryParse(json['joined_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
       );
 }
 
@@ -334,6 +393,7 @@ class AdventureClaimResult {
   final int grossGuildCoins;
   final int facilityInvested;
   final int guildCoinsReceived;
+  final HeroCompanion? joinedHero;
 
   const AdventureClaimResult({
     required this.adventureId,
@@ -342,6 +402,7 @@ class AdventureClaimResult {
     required this.grossGuildCoins,
     required this.facilityInvested,
     required this.guildCoinsReceived,
+    required this.joinedHero,
   });
 
   factory AdventureClaimResult.fromJson(Map<String, dynamic> json) {
@@ -352,6 +413,11 @@ class AdventureClaimResult {
       grossGuildCoins: (json['gross_guild_coins'] as num?)?.toInt() ?? 0,
       facilityInvested: (json['facility_invested'] as num?)?.toInt() ?? 0,
       guildCoinsReceived: (json['guild_coins_received'] as num?)?.toInt() ?? 0,
+      joinedHero: json['joined_hero'] is Map<String, dynamic>
+          ? HeroCompanion.fromJson(
+              json['joined_hero'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }

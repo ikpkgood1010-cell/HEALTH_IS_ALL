@@ -44,6 +44,7 @@ class ApiDataProvider extends ChangeNotifier {
   AdventureClaimResult? _lastAdventureClaim;
   TrainingGroundsStatus? _trainingGrounds;
   List<AdventureState> _adventureHistory = const [];
+  List<HeroCompanion> _heroRoster = const [];
   bool _isGuildLoading = false;
   String? _guildError;
   final Map<String, String> _pendingRecordKeys = {};
@@ -70,6 +71,7 @@ class ApiDataProvider extends ChangeNotifier {
   AdventureClaimResult? get lastAdventureClaim => _lastAdventureClaim;
   TrainingGroundsStatus? get trainingGrounds => _trainingGrounds;
   List<AdventureState> get adventureHistory => _adventureHistory;
+  List<HeroCompanion> get heroRoster => _heroRoster;
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
 
@@ -110,10 +112,12 @@ class ApiDataProvider extends ChangeNotifier {
       final results = await Future.wait<Object>([
         _api.fetchTrainingGrounds(userId),
         _api.fetchAdventureHistory(userId),
+        _api.fetchHeroRoster(userId),
       ]);
       _adventure = settledAdventure;
       _trainingGrounds = results[0] as TrainingGroundsStatus;
       _adventureHistory = results[1] as List<AdventureState>;
+      _heroRoster = results[2] as List<HeroCompanion>;
     } catch (_) {
       _guildError = '길드 서버와 연결하지 못했어요. 건강 기반 미리보기는 계속 볼 수 있어요.';
     } finally {
@@ -140,9 +144,11 @@ class ApiDataProvider extends ChangeNotifier {
       final results = await Future.wait<Object>([
         _api.fetchTrainingGrounds(userId),
         _api.fetchAdventureHistory(userId),
+        _api.fetchHeroRoster(userId),
       ]);
       _trainingGrounds = results[0] as TrainingGroundsStatus;
       _adventureHistory = results[1] as List<AdventureState>;
+      _heroRoster = results[2] as List<HeroCompanion>;
       return result;
     } catch (_) {
       _guildError = '보상을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
