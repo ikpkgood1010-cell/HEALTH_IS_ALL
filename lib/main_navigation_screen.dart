@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'health_tab_screens.dart';
-import 'guild_screen.dart';
 import 'settings_profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -18,7 +17,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     HomeScreen(),
     ExerciseTabScreen(),
     DietTabScreen(),
-    GuildScreen(),
     SettingsProfileScreen(),
   ];
 
@@ -43,10 +41,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               icon: Icon(Icons.restaurant_outlined),
               selectedIcon: Icon(Icons.restaurant),
               label: '식단'),
-          NavigationDestination(
-              icon: Icon(Icons.castle_outlined),
-              selectedIcon: Icon(Icons.castle),
-              label: '길드'),
           NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),

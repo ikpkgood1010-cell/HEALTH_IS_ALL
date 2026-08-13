@@ -69,6 +69,26 @@ def test_health_check(client):
     assert response.json() == {"status": "ok", "service": "HEALTH IS ALL API"}
 
 
+def test_canonical_idle_game_direction(client):
+    response = client.get("/api/v1/game/direction")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["official_name"] == "HEALTH IS ALL : 건강이 전부다 !!"
+    assert data["health_tabs"] == ["홈", "운동", "식단", "마이"]
+    assert data["party_roles"] == ["탱커", "전사", "마법사", "궁수", "도적", "치유사"]
+    assert data["normal_rooms_per_floor"] == 5
+    assert data["boss_rooms_per_floor"] == 1
+    assert data["constellation_layers"] == 7
+    assert data["large_nodes_per_layer"] == 6
+    assert data["deterministic_spirit_hatching"] is True
+    assert data["random_gacha"] is False
+    assert data["equipment_inventory"] is False
+    assert "small_nodes" in data["rebirth_resets"]
+    assert "medium_nodes" in data["rebirth_resets"]
+    assert "job_advancement_tiers" in data["rebirth_retains"]
+    assert "advancement_appearance" in data["rebirth_retains"]
+
+
 def test_default_health_i_status(client):
     response = client.get("/api/v1/health-i/status/test_user")
     assert response.status_code == 200

@@ -18,7 +18,7 @@ class ExerciseTabScreen extends StatelessWidget {
       current: data.workoutMinutes,
       accent: AppColors.secondary500,
       icon: Icons.directions_run,
-      message: '운동 종류·강도·시간을 기록하면 길드의 훈련장이 자라요.',
+      message: '운동 종류·강도·시간을 기록하면 개인 목표와 회복 상태를 함께 확인할 수 있어요.',
       buttonLabel: '운동 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const WorkoutScreen())),
@@ -39,7 +39,7 @@ class DietTabScreen extends StatelessWidget {
       current: data.consumedCalories,
       accent: AppColors.primary500,
       icon: Icons.restaurant,
-      message: '식사를 기록하면 영양 균형과 길드 식당의 성장을 함께 확인해요.',
+      message: '식사를 기록하면 오늘의 영양 균형과 목표 달성 흐름을 함께 확인해요.',
       buttonLabel: '식단 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const DietScreen())),

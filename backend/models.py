@@ -64,6 +64,26 @@ class GameOverviewResponse(BaseModel):
     prestige_cooldown_days: int
 
 
+class GameDirectionResponse(BaseModel):
+    """Read-only canonical contract for the new idle game foundation."""
+
+    official_name: str
+    status: Literal["FOUNDATION"] = "FOUNDATION"
+    health_tabs: List[str]
+    game_entry: str
+    party_roles: List[str]
+    full_auto_battle: bool
+    normal_rooms_per_floor: int
+    boss_rooms_per_floor: int
+    constellation_layers: int
+    large_nodes_per_layer: int
+    deterministic_spirit_hatching: bool
+    random_gacha: bool
+    equipment_inventory: bool
+    rebirth_resets: List[str]
+    rebirth_retains: List[str]
+
+
 class AdventureSettleRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 

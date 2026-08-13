@@ -10,8 +10,6 @@ import 'package:provider/provider.dart';
 
 void main() {
   Widget createWidgetUnderTest() {
-    var adventureSettled = false;
-    var heroJoined = false;
     final apiClient = HealthIApiClient(
       client: MockClient((request) async {
         if (request.url.path.contains('/health-i/status/')) {
@@ -24,100 +22,6 @@ void main() {
             '"today_consumed_calories":0,'
             '"today_workout_minutes":0,"today_water_liters":0,'
             '"streak_days":0}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path == '/api/v1/game/adventures/settle') {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          adventureSettled = true;
-          return http.Response(
-            '{"adventure_id":"adv-test","user_id":"anon_test",'
-            '"window_start":"2026-08-10T00:00:00",'
-            '"window_end":"2026-08-10T12:00:00","vitality":40,'
-            '"gross_guild_coins":28,"offline_efficiency":0.7,'
-            '"hbi_score":52.5,"tower_floor":4,"rooms":['
-            '{"position":1,"room_type":"COMBAT","title":"안개 길목",'
-            '"outcome":"활력으로 길을 열었어요."},'
-            '{"position":2,"room_type":"EVENT","title":"반짝이는 샘",'
-            '"outcome":"작은 발견을 했어요."},'
-            '{"position":3,"room_type":"ELITE","title":"수호자의 문",'
-            '"outcome":"관문을 넘었어요."},'
-            '{"position":4,"room_type":"REST","title":"회복의 모닥불",'
-            '"outcome":"숨을 골랐어요."},'
-            '{"position":5,"room_type":"BOSS","title":"층의 수호자",'
-            '"outcome":"모험을 마쳤어요."}],"claimed":false}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.contains('/game/adventures/history/')) {
-          if (!adventureSettled) {
-            return http.Response(
-              '{"items":[]}',
-              200,
-              headers: {'content-type': 'application/json; charset=utf-8'},
-            );
-          }
-          return http.Response(
-            '{"items":[{"adventure_id":"adv-test","user_id":"anon_test",'
-            '"window_start":"2026-08-10T00:00:00",'
-            '"window_end":"2026-08-10T12:00:00","vitality":40,'
-            '"gross_guild_coins":28,"offline_efficiency":0.7,'
-            '"hbi_score":52.5,"tower_floor":4,"rooms":['
-            '{"position":1,"room_type":"COMBAT","title":"안개 길목",'
-            '"outcome":"활력으로 길을 열었어요."},'
-            '{"position":5,"room_type":"BOSS","title":"층의 수호자",'
-            '"outcome":"모험을 마쳤어요."}],"claimed":true}]}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.contains('/facilities/training-grounds/')) {
-          return http.Response(
-            '{"code":"TRAINING_GROUNDS","name":"훈련장","level":2,'
-            '"total_invested":120,"current_level_progress":20,'
-            '"next_level_cost":150,"progress_ratio":0.1333,'
-            '"guild_coin_balance":80,"description":"기초 시설",'
-            '"stage_code":"FIELD_CAMP","stage_name":"들판 훈련터",'
-            '"stage_message":"건강한 모험을 기억하고 있어요.",'
-            '"next_milestone_level":3}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.contains('/game/heroes/')) {
-          return http.Response(
-            heroJoined
-                ? '{"items":[{"hero_code":"FOREST_SCOUT_ARU",'
-                    '"name":"아루","title":"새싹 길잡이",'
-                    '"role":"탐험 용사","element":"FOREST",'
-                    '"rarity":"STORY",'
-                    '"join_source":"FIRST_ADVENTURE_CLAIM",'
-                    '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
-                    '"gameplay_effect":"NONE",'
-                    '"joined_at":"2026-08-10T12:00:00",'
-                    '"source_adventure_id":"adv-test"}]}'
-                : '{"items":[]}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.endsWith('/claim')) {
-          heroJoined = true;
-          return http.Response(
-            '{"adventure_id":"adv-test","claim_id":"claim-test",'
-            '"already_claimed":false,"gross_guild_coins":28,'
-            '"facility_invested":5,"guild_coins_received":23,'
-            '"joined_hero":{"hero_code":"FOREST_SCOUT_ARU",'
-            '"name":"아루","title":"새싹 길잡이",'
-            '"role":"탐험 용사","element":"FOREST",'
-            '"rarity":"STORY",'
-            '"join_source":"FIRST_ADVENTURE_CLAIM",'
-            '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
-            '"gameplay_effect":"NONE",'
-            '"joined_at":"2026-08-10T12:00:00",'
-            '"source_adventure_id":"adv-test"}}',
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
@@ -137,11 +41,11 @@ void main() {
     );
   }
 
-  testWidgets('확정된 하단 탭 5개를 순서대로 표시한다', (tester) async {
+  testWidgets('건강 앱 하단 탭 4개를 순서대로 표시한다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    for (final label in ['홈', '운동', '식단', '길드', '마이']) {
+    for (final label in ['홈', '운동', '식단', '마이']) {
       expect(
         find.descendant(
           of: find.byType(NavigationBar),
@@ -150,43 +54,41 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(find.byType(NavigationDestination), findsNWidgets(5));
+    expect(find.text('길드'), findsNothing);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
   });
 
-  testWidgets('길드 탭에서 자동 모험과 훈련장을 표시하고 보상을 받는다', (tester) async {
+  testWidgets('홈 상단에서 게임에 입장하고 환생 보존 규칙을 확인한다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.castle_outlined));
+    expect(find.byKey(const Key('home-game-entry')), findsOneWidget);
+    await tester.tap(find.text('게임으로 입장'));
     await tester.pumpAndSettle();
 
-    expect(
-        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-        3);
-    await tester.scrollUntilVisible(find.text('자동 모험'), 260);
-    await tester.pumpAndSettle();
-    expect(find.text('자동 모험'), findsOneWidget);
-    expect(find.text('모험대가 돌아왔어요'), findsOneWidget);
-    expect(find.text('탑 4층 탐험 경로'), findsOneWidget);
-    expect(find.text('1. 안개 길목'), findsOneWidget);
-    expect(find.text('5. 층의 수호자'), findsOneWidget);
+    expect(find.byKey(const Key('game-hub')), findsOneWidget);
+    expect(find.text('나의 6인 파티'), findsOneWidget);
+    expect(find.text('탱커'), findsOneWidget);
+    expect(find.text('치유사'), findsOneWidget);
+    expect(find.text('마을·길드'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('안전하게 보상 받기'));
+    await tester.drag(
+      find.byKey(const Key('game-hub')),
+      const Offset(0, -1000),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('안전하게 보상 받기'));
+    await tester.tap(find.text('환생').first);
     await tester.pumpAndSettle();
-    expect(find.text('보상을 받았어요'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('나의 원정대'), -300);
-    await tester.pumpAndSettle();
-    expect(find.text('새싹 길잡이 · 아루'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('길드 시설'), 300);
+    expect(find.byKey(const Key('rebirth-rules')), findsOneWidget);
+    expect(find.text('회차마다 초기화'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('rebirth-rules')),
+      const Offset(0, -400),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('길드 시설'), findsOneWidget);
-    expect(find.text('들판 훈련터'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('지난 모험 회상'), 300);
-    await tester.pumpAndSettle();
-    expect(find.text('지난 모험 회상'), findsOneWidget);
-    expect(find.text('탑 4층 · 층의 수호자'), findsOneWidget);
+    expect(find.textContaining('소형·중형 노드'), findsOneWidget);
+    expect(find.text('영구 보존'), findsOneWidget);
+    expect(find.textContaining('최고 전직 차수와 전직 외형'), findsOneWidget);
   });
 }

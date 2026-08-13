@@ -32,6 +32,7 @@ from backend.models import (
     AdventureHistoryResponse,
     AdventureResponse,
     AdventureSettleRequest,
+    GameDirectionResponse,
     GameOverviewResponse,
     HealthIStateResponse,
     HealthRecordRequest,
@@ -382,9 +383,45 @@ def get_health_i_status(user_id: str, db: Session = Depends(get_db)) -> HealthIS
     )
 
 
-@app.get("/api/v1/game/overview/{user_id}", response_model=GameOverviewResponse)
+@app.get("/api/v1/game/direction", response_model=GameDirectionResponse)
+def get_game_direction() -> GameDirectionResponse:
+    """Return the canonical, non-random game foundation without reading user data."""
+    return GameDirectionResponse(
+        official_name="HEALTH IS ALL : 건강이 전부다 !!",
+        health_tabs=["홈", "운동", "식단", "마이"],
+        game_entry="HOME_TOP_CARD",
+        party_roles=["탱커", "전사", "마법사", "궁수", "도적", "치유사"],
+        full_auto_battle=True,
+        normal_rooms_per_floor=5,
+        boss_rooms_per_floor=1,
+        constellation_layers=7,
+        large_nodes_per_layer=6,
+        deterministic_spirit_hatching=True,
+        random_gacha=False,
+        equipment_inventory=False,
+        rebirth_resets=["tower_floor", "gold", "run_buffs", "small_nodes", "medium_nodes"],
+        rebirth_retains=[
+            "recruited_heroes",
+            "job_advancement_tiers",
+            "advancement_appearance",
+            "large_nodes",
+            "skills",
+            "avatars",
+            "spirits",
+            "health_essence",
+            "star_shards",
+            "transcendence_traits",
+        ],
+    )
+
+
+@app.get(
+    "/api/v1/game/overview/{user_id}",
+    response_model=GameOverviewResponse,
+    deprecated=True,
+)
 def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOverviewResponse:
-    """Return a read-only game projection from the user's current health data."""
+    """Legacy guild projection retained temporarily for old client compatibility."""
     status = get_health_i_status(user_id, db)
     overview = build_game_overview(
         level=status.level,
@@ -400,7 +437,11 @@ def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOvervi
     return GameOverviewResponse(**overview.to_dict())
 
 
-@app.post("/api/v1/game/adventures/settle", response_model=AdventureResponse)
+@app.post(
+    "/api/v1/game/adventures/settle",
+    response_model=AdventureResponse,
+    deprecated=True,
+)
 def settle_automatic_adventure(
     request: AdventureSettleRequest,
     db: Session = Depends(get_db),
@@ -445,6 +486,7 @@ def settle_automatic_adventure(
 @app.get(
     "/api/v1/game/adventures/history/{user_id}",
     response_model=AdventureHistoryResponse,
+    deprecated=True,
 )
 def get_adventure_history(
     user_id: str,
@@ -463,6 +505,7 @@ def get_adventure_history(
 @app.post(
     "/api/v1/game/adventures/{adventure_id}/claim",
     response_model=AdventureClaimResponse,
+    deprecated=True,
 )
 def claim_automatic_adventure(
     adventure_id: str,
@@ -482,6 +525,7 @@ def claim_automatic_adventure(
 @app.get(
     "/api/v1/game/facilities/training-grounds/{user_id}",
     response_model=TrainingGroundsResponse,
+    deprecated=True,
 )
 def get_training_grounds(
     user_id: str,
@@ -493,6 +537,7 @@ def get_training_grounds(
 @app.get(
     "/api/v1/game/heroes/{user_id}",
     response_model=HeroRosterResponse,
+    deprecated=True,
 )
 def get_hero_roster(
     user_id: str,
