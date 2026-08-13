@@ -324,6 +324,66 @@ def test_health_record_retry_is_persistently_idempotent(journey_runtime):
     assert conflicting.status_code == 409
 
 
+def test_health_records_award_bounded_idempotent_game_essence(journey_runtime):
+    client, _ = journey_runtime
+    user_id = "health_essence_user"
+    initialized = client.post(
+        "/api/v1/game/state/initialize",
+        json={"user_id": user_id},
+    )
+    assert initialized.status_code == 200
+
+    workout = {
+        "user_id": user_id,
+        "record_type": "workout_log",
+        "value": 30,
+        "idempotency_key": "51111111-1111-4111-8111-111111111111",
+    }
+    first = client.post("/api/v1/health/record", json=workout)
+    retry = client.post("/api/v1/health/record", json=workout)
+    assert first.status_code == 200
+    assert first.json()["health_essence_earned"] == 2
+    assert retry.json()["health_essence_earned"] == 2
+    assert retry.json()["duplicate"] is True
+
+    for index in range(10):
+        response = client.post(
+            "/api/v1/health/record",
+            json={
+                "user_id": user_id,
+                "record_type": "meal_log",
+                "value": 500,
+                "idempotency_key": f"6{index:07d}-1111-4111-8111-111111111111",
+            },
+        )
+        assert response.status_code == 200
+    state = client.get(f"/api/v1/game/state/{user_id}").json()
+    assert state["health_essence"] == 8
+
+
+def test_game_initialization_backfills_earlier_health_records(journey_runtime):
+    client, _ = journey_runtime
+    user_id = "health_backfill_user"
+    recorded = client.post(
+        "/api/v1/health/record",
+        json={
+            "user_id": user_id,
+            "record_type": "workout_log",
+            "value": 60,
+            "idempotency_key": "71111111-1111-4111-8111-111111111111",
+        },
+    )
+    assert recorded.status_code == 200
+    assert recorded.json()["health_essence_earned"] == 0
+
+    initialized = client.post(
+        "/api/v1/game/state/initialize",
+        json={"user_id": user_id},
+    )
+    assert initialized.status_code == 200
+    assert initialized.json()["health_essence"] == 3
+
+
 def test_health_record_to_adventure_and_training_ground_journey(journey_runtime):
     client, testing_session = journey_runtime
     user_id = "journey_user"

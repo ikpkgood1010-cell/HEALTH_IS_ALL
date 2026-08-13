@@ -193,7 +193,7 @@ class ApiDataProvider extends ChangeNotifier {
       );
       _rebirthPreview = await _api.fetchRebirthPreview(userId);
     } catch (_) {
-      _gameError = '골드가 부족하거나 다른 진행이 먼저 반영됐어요. 전투 정산 후 다시 시도해주세요.';
+      _gameError = '필요 재화가 부족하거나 다른 진행이 먼저 반영됐어요. 상태를 새로 확인해주세요.';
     } finally {
       _isGameLoading = false;
       notifyListeners();
@@ -352,6 +352,9 @@ class ApiDataProvider extends ChangeNotifier {
       notifyListeners();
       // 서버 기준 최신 집계(오늘자 칼로리/운동/수분/streak/감정상태)로 동기화
       await refreshStatus();
+      if (result.healthEssenceEarned > 0 && _canonicalGame != null) {
+        await refreshGame();
+      }
       return result;
     } catch (e) {
       _lastError = '기록 저장에 실패했습니다. 네트워크 상태를 확인해주세요.';

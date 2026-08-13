@@ -11,6 +11,7 @@ def test_plan_contains_baseline_then_canonical_game_migration():
         "202608090001_orm_baseline.sql",
         "202608130001_canonical_idle_game_state.sql",
         "202608140001_idle_battle_runtime.sql",
+        "202608140002_health_essence_rewards.sql",
     ]
 
 

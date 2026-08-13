@@ -219,6 +219,29 @@ class GameBattleSettlementModel(Base):
     created_at = Column(DateTime, nullable=False, default=utc_now)
 
 
+class GameHealthRewardModel(Base):
+    """One bounded permanent-currency award per immutable health activity."""
+
+    __tablename__ = "game_health_rewards"
+    __table_args__ = (
+        Index("ix_game_health_rewards_user_created", "user_id", "created_at"),
+    )
+
+    activity_id = Column(
+        String(36),
+        ForeignKey("activity_logs.activity_id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    user_id = Column(
+        String(36),
+        ForeignKey("game_profiles.user_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    record_type = Column(String(30), nullable=False)
+    health_essence_earned = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
+
 def init_db() -> bool:
     if engine is None:
         return False

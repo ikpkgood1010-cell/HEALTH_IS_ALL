@@ -79,9 +79,36 @@ void main() {
           );
         }
         if (request.url.path == '/api/v1/game/constellation/unlock') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
           final state = _selectedGameState()
             ..['revision'] = 2
             ..['gold'] = 3500;
+          if ((body['node_code'] as String).startsWith('L1_ADVANCE_')) {
+            state['health_essence'] = 0;
+            final heroes = state['heroes'] as List<dynamic>;
+            final mage = heroes
+                .cast<Map<String, dynamic>>()
+                .firstWhere((hero) => hero['hero_code'] == 'MAGE');
+            mage
+              ..['advancement_tier'] = 1
+              ..['appearance_code'] = 'MAGE_TIER_1'
+              ..['active_skill_slots'] = 1;
+            final layers = state['constellation_layers'] as List<dynamic>;
+            final layerOne = layers[1] as Map<String, dynamic>;
+            final nodes = layerOne['nodes'] as List<dynamic>;
+            final mageNode = nodes
+                .cast<Map<String, dynamic>>()
+                .firstWhere((node) => node['hero_code'] == 'MAGE');
+            mageNode
+              ..['state'] = 'UNLOCKED'
+              ..['advancement_tier'] = 1
+              ..['can_afford'] = false;
+            return http.Response(
+              jsonEncode(state),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
           final branches = state['recruitment_branches'] as List<dynamic>;
           final tanker = branches.first as Map<String, dynamic>;
           tanker
@@ -287,6 +314,36 @@ void main() {
     expect(find.text('소형 1/6 · 중형 0/2 · 사용 1500 골드'), findsOneWidget);
     expect(find.textContaining('기초 단련 2'), findsOneWidget);
   });
+
+  testWidgets('건강 정수로 용사별 1차 전직을 확정 해금한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('constellation-layer-1')));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('constellation-detail')),
+      const Offset(0, -700),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('advance-hero-1-MAGE')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('마법사 · 원소 마도사'), findsOneWidget);
+    expect(find.text('건강 정수 12 · 별 조각 0'), findsWidgets);
+    await tester.tap(find.byKey(const Key('advance-hero-1-MAGE')));
+    await tester.pumpAndSettle();
+    expect(find.text('전직 완료'), findsWidgets);
+  });
 }
 
 Map<String, dynamic> _selectedGameState() {
@@ -308,6 +365,11 @@ Map<String, dynamic> _selectedGameState() {
         'node_kind': layer == 0 ? 'RECRUIT' : 'ADVANCEMENT',
         'state': layer == 1 && role.$1 == 'MAGE' ? 'NEXT' : 'LOCKED',
         'advancement_tier': 0,
+        'advancement_name': layer == 1 && role.$1 == 'MAGE' ? '원소 마도사' : null,
+        'health_essence_cost': layer == 0 ? 0 : 12 * (1 << (layer - 1)),
+        'star_shard_cost': layer <= 1 ? 0 : 2 * (layer - 1),
+        'can_afford': layer == 1 && role.$1 == 'MAGE',
+        'effect_label': layer == 0 ? null : '$layer차 전직 외형·패시브 영구 보존',
       };
   return {
     'initialized': true,
@@ -330,7 +392,7 @@ Map<String, dynamic> _selectedGameState() {
       'room_progress_seconds': 15,
       'room_required_seconds': 45,
     },
-    'health_essence': 0,
+    'health_essence': 12,
     'star_shards': 0,
     'transcendence_points': 0,
     'initial_hero_selected': true,

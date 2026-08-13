@@ -465,6 +465,11 @@ class ConstellationNodeState {
   final String nodeKind;
   final String state;
   final int advancementTier;
+  final String? advancementName;
+  final int healthEssenceCost;
+  final int starShardCost;
+  final bool canAfford;
+  final String? effectLabel;
 
   const ConstellationNodeState({
     required this.nodeCode,
@@ -474,6 +479,11 @@ class ConstellationNodeState {
     required this.nodeKind,
     required this.state,
     required this.advancementTier,
+    this.advancementName,
+    this.healthEssenceCost = 0,
+    this.starShardCost = 0,
+    this.canAfford = false,
+    this.effectLabel,
   });
 
   factory ConstellationNodeState.fromJson(Map<String, dynamic> json) =>
@@ -485,6 +495,12 @@ class ConstellationNodeState {
         nodeKind: json['node_kind'] as String? ?? 'ADVANCEMENT',
         state: json['state'] as String? ?? 'LOCKED',
         advancementTier: (json['advancement_tier'] as num?)?.toInt() ?? 0,
+        advancementName: json['advancement_name'] as String?,
+        healthEssenceCost:
+            (json['health_essence_cost'] as num?)?.toInt() ?? 0,
+        starShardCost: (json['star_shard_cost'] as num?)?.toInt() ?? 0,
+        canAfford: json['can_afford'] as bool? ?? false,
+        effectLabel: json['effect_label'] as String?,
       );
 }
 
@@ -685,6 +701,7 @@ class HealthRecordResult {
   final int currentDailyExp;
   final String message;
   final bool duplicate;
+  final int healthEssenceEarned;
 
   HealthRecordResult({
     required this.success,
@@ -693,6 +710,7 @@ class HealthRecordResult {
     required this.currentDailyExp,
     required this.message,
     required this.duplicate,
+    required this.healthEssenceEarned,
   });
 
   factory HealthRecordResult.fromJson(Map<String, dynamic> json) {
@@ -703,6 +721,8 @@ class HealthRecordResult {
       currentDailyExp: (json['current_daily_exp'] as num?)?.toInt() ?? 0,
       message: json['message'] as String? ?? '',
       duplicate: json['duplicate'] as bool? ?? false,
+      healthEssenceEarned:
+          (json['health_essence_earned'] as num?)?.toInt() ?? 0,
     );
   }
 }

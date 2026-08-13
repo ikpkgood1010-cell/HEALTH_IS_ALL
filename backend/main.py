@@ -14,6 +14,7 @@ from backend.ai_agent_service import HealthIAgentService
 from backend.config import settings, utc_now
 from backend.database import (
     ActivityLogModel,
+    GameHealthRewardModel,
     HealthIProfileModel,
     UserExpLogModel,
     database_configured,
@@ -21,6 +22,7 @@ from backend.database import (
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
+from backend.health_essence_service import award_health_essence
 from backend.data_idempotency_engine import (
     DUPLICATE_RECORD_MESSAGE,
     canonical_detail_json,
@@ -61,6 +63,7 @@ from backend.idle_game_service import (
     GameStateNotFoundError,
     InitialHeroSelectionConflictError,
     InsufficientGoldError,
+    InsufficientPermanentCurrencyError,
     RebirthNotReadyError,
     RebirthRevisionConflictError,
     execute_rebirth,
@@ -196,6 +199,9 @@ def _duplicate_health_record_response(
             status_code=409,
             detail="Idempotency key was already used for a different health record",
         )
+    reward = db.query(GameHealthRewardModel).filter_by(
+        activity_id=existing.activity_id,
+    ).first()
     return HealthRecordResponse(
         success=True,
         record_id=existing.activity_id,
@@ -203,6 +209,7 @@ def _duplicate_health_record_response(
         current_daily_exp=_daily_exp_total(db, req.user_id),
         message=DUPLICATE_RECORD_MESSAGE,
         duplicate=True,
+        health_essence_earned=(reward.health_essence_earned if reward else 0),
     )
 
 
@@ -317,7 +324,15 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
         profile.level = (profile.current_exp // 300) + 1
         profile.updated_at = utc_now()
 
+    health_essence_earned = 0
     try:
+        health_essence_earned = award_health_essence(
+            db,
+            user_id=req.user_id,
+            activity_id=record_id,
+            record_type=req.record_type,
+            value=req.value,
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -340,6 +355,7 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
         current_daily_exp=int(engine_res["current_daily_exp"]),
         message=engine_res["reason"],
         duplicate=False,
+        health_essence_earned=health_essence_earned,
     )
 
 
@@ -537,7 +553,7 @@ def unlock_canonical_constellation_node(
     request: ConstellationUnlockRequest,
     db: Session = Depends(get_db),
 ) -> CanonicalGameStateResponse:
-    """Spend run gold on the next path node or recruit its completed hero."""
+    """Unlock the next valid run, recruitment, or permanent advancement node."""
     try:
         state = unlock_constellation_node(
             db,
@@ -552,6 +568,8 @@ def unlock_canonical_constellation_node(
     except ConstellationNodeNotReadyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except InsufficientGoldError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientPermanentCurrencyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return CanonicalGameStateResponse(**state)
 

@@ -790,6 +790,10 @@ class _ConstellationDetailState extends State<_ConstellationDetail> {
           layer: _selectedLayer,
           nodes: selected?.nodes ?? const [],
           starterSelected: state?.initialHeroSelected ?? false,
+          healthEssence: state?.healthEssence ?? 0,
+          starShards: state?.starShards ?? 0,
+          loading: widget.data.isGameLoading,
+          onUnlock: widget.data.unlockConstellationNode,
         ),
         if (_selectedLayer == 0 && state != null) ...[
           const SizedBox(height: 12),
@@ -959,11 +963,19 @@ class _ConstellationLayerSummary extends StatelessWidget {
   final int layer;
   final List<ConstellationNodeState> nodes;
   final bool starterSelected;
+  final int healthEssence;
+  final int starShards;
+  final bool loading;
+  final Future<void> Function(String nodeCode) onUnlock;
 
   const _ConstellationLayerSummary({
     required this.layer,
     required this.nodes,
     required this.starterSelected,
+    required this.healthEssence,
+    required this.starShards,
+    required this.loading,
+    required this.onUnlock,
   });
 
   @override
@@ -987,16 +999,50 @@ class _ConstellationLayerSummary extends StatelessWidget {
               '${nodes.length}개 중 $unlocked개 해금',
               style: AppTypography.captionSm,
             ),
+            if (layer > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                '보유 건강 정수 $healthEssence · 별 조각 $starShards',
+                style: AppTypography.captionSm,
+              ),
+            ],
             const SizedBox(height: 10),
             for (final node in nodes)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+                padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(_roleIcon(node.heroCode), size: 18),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(node.roleName)),
-                    Text(_nodeStateLabel(node), style: AppTypography.captionSm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            node.advancementName == null
+                                ? node.roleName
+                                : '${node.roleName} · ${node.advancementName}',
+                          ),
+                          if (layer > 0 && node.state != 'UNLOCKED')
+                            Text(
+                              '건강 정수 ${node.healthEssenceCost} · 별 조각 ${node.starShardCost}',
+                              style: AppTypography.captionSm,
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (layer > 0 && node.state == 'NEXT')
+                      FilledButton.tonal(
+                        key: Key('advance-hero-${node.layer}-${node.heroCode}'),
+                        onPressed: loading || !node.canAfford
+                            ? null
+                            : () => onUnlock(node.nodeCode),
+                        child: Text(node.canAfford ? '전직' : '재화 부족'),
+                      )
+                    else
+                      Text(_nodeStateLabel(node),
+                          style: AppTypography.captionSm),
                   ],
                 ),
               ),
@@ -1005,7 +1051,7 @@ class _ConstellationLayerSummary extends StatelessWidget {
               Text(
                 layer == 0
                     ? '아래 소형·중형 경로를 완성하면 해당 용사의 대형 영입 노드가 열립니다.'
-                    : '전직 비용은 밸런스 확정 후 활성화됩니다.',
+                    : '전직은 용사별로 진행되며 외형·패시브·스킬 청사진이 환생 후에도 유지됩니다.',
                 style: AppTypography.captionSm,
               ),
             ],

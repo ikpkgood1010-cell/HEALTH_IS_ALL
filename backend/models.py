@@ -27,6 +27,7 @@ class HealthRecordResponse(BaseModel):
     current_daily_exp: int
     message: str
     duplicate: bool = False
+    health_essence_earned: int = 0
 
 
 class HealthIStateResponse(BaseModel):
@@ -111,6 +112,11 @@ class ConstellationNodeStateResponse(BaseModel):
     node_kind: Literal["RECRUIT", "ADVANCEMENT"]
     state: Literal["UNLOCKED", "NEXT", "LOCKED"]
     advancement_tier: int
+    advancement_name: Optional[str] = None
+    health_essence_cost: int = 0
+    star_shard_cost: int = 0
+    can_afford: bool = False
+    effect_label: Optional[str] = None
 
 
 class ConstellationLayerStateResponse(BaseModel):

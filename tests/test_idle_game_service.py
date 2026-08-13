@@ -16,6 +16,7 @@ from backend.database import (
 )
 from backend.idle_game_service import (
     InitialHeroSelectionConflictError,
+    InsufficientPermanentCurrencyError,
     RebirthNotReadyError,
     RebirthRevisionConflictError,
     execute_rebirth,
@@ -219,6 +220,62 @@ def test_layer_zero_branch_spends_gold_in_order_then_recruits_permanently(db_ses
     )
     assert recruited_branch["hero_recruited"] is True
     assert recruited_branch["branch_complete"] is True
+
+
+def test_advancement_spends_permanent_currency_and_preserves_class_identity(db_session):
+    initialize_game_state(db_session, user_id="advance_user")
+    state = select_initial_hero(
+        db_session,
+        user_id="advance_user",
+        hero_code="TANKER",
+        expected_revision=0,
+    )
+    tier_one = next(
+        node
+        for node in state["constellation_layers"][1]["nodes"]
+        if node["hero_code"] == "TANKER"
+    )
+    assert tier_one["advancement_name"] == "수호자"
+    assert tier_one["health_essence_cost"] == 12
+    assert tier_one["star_shard_cost"] == 0
+    assert tier_one["can_afford"] is False
+
+    profile = db_session.query(GameProfileModel).filter_by(user_id="advance_user").one()
+    profile.health_essence = 12
+    db_session.commit()
+    state = get_game_state(db_session, user_id="advance_user")
+    assert next(
+        node
+        for node in state["constellation_layers"][1]["nodes"]
+        if node["hero_code"] == "TANKER"
+    )["can_afford"] is True
+
+    advanced = unlock_constellation_node(
+        db_session,
+        user_id="advance_user",
+        node_code="L1_ADVANCE_TANKER",
+        expected_revision=state["revision"],
+    )
+    tanker = next(hero for hero in advanced["heroes"] if hero["hero_code"] == "TANKER")
+    assert tanker["advancement_tier"] == 1
+    assert tanker["appearance_code"] == "TANKER_TIER_1"
+    assert tanker["active_skill_slots"] == 1
+    assert advanced["health_essence"] == 0
+    assert advanced["node_counts"]["LARGE"] == 1
+
+    assert unlock_constellation_node(
+        db_session,
+        user_id="advance_user",
+        node_code="L1_ADVANCE_TANKER",
+        expected_revision=0,
+    ) == advanced
+    with pytest.raises(InsufficientPermanentCurrencyError):
+        unlock_constellation_node(
+            db_session,
+            user_id="advance_user",
+            node_code="L2_ADVANCE_TANKER",
+            expected_revision=advanced["revision"],
+        )
 
 
 def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):

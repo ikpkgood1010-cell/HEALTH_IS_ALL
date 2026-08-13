@@ -11,6 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.advancement_economy import advancement_node_code, advancement_spec
 from backend.config import utc_now
 from backend.constellation_economy import (
     REBIRTH_MINIMUM_FLOOR,
@@ -33,6 +34,7 @@ from backend.idle_battle_engine import (
     calculate_party_power,
     room_required_seconds,
 )
+from backend.health_essence_service import sync_unrewarded_health_records
 
 HERO_ROLES = (
     ("TANKER", "탱커"),
@@ -79,6 +81,10 @@ class ConstellationNodeNotReadyError(RuntimeError):
 
 
 class InsufficientGoldError(RuntimeError):
+    pass
+
+
+class InsufficientPermanentCurrencyError(RuntimeError):
     pass
 
 
@@ -130,6 +136,8 @@ def initialize_game_state(db: Session, *, user_id: str) -> dict:
             db.commit()
         except IntegrityError:
             db.rollback()
+    sync_unrewarded_health_records(db, user_id=user_id)
+    db.commit()
     return get_game_state(db, user_id=user_id)
 
 
@@ -401,7 +409,7 @@ def unlock_constellation_node(
     node_code: str,
     expected_revision: int,
 ) -> dict:
-    """Unlock the next run node or recruit one completed layer-zero branch."""
+    """Unlock the next run node, recruit a hero, or advance one hero permanently."""
     normalized_code = node_code.strip().upper()
     profile = (
         db.query(GameProfileModel)
@@ -435,6 +443,46 @@ def unlock_constellation_node(
         heroes=ordered,
         starter_hero_code=starter_hero_code,
     )
+
+    for hero in heroes:
+        next_tier = hero.advancement_tier + 1
+        if next_tier > 6:
+            continue
+        expected_code = advancement_node_code(hero.hero_code, next_tier)
+        if normalized_code != expected_code:
+            continue
+        if not hero.recruited:
+            raise ConstellationNodeNotReadyError("recruit this hero before advancement")
+        spec = advancement_spec(hero.hero_code, next_tier)
+        if (
+            profile.health_essence < spec.health_essence_cost
+            or profile.star_shards < spec.star_shard_cost
+        ):
+            raise InsufficientPermanentCurrencyError(
+                f"requires {spec.health_essence_cost} health essence and "
+                f"{spec.star_shard_cost} star shards"
+            )
+        profile.health_essence -= spec.health_essence_cost
+        profile.star_shards -= spec.star_shard_cost
+        hero.advancement_tier = spec.tier
+        hero.appearance_code = spec.appearance_code
+        hero.active_skill_slots = spec.active_skill_slots
+        hero.updated_at = utc_now()
+        db.add(
+            GameConstellationNodeModel(
+                user_id=user_id,
+                node_code=expected_code,
+                layer=spec.tier,
+                node_size="LARGE",
+                hero_code=hero.hero_code,
+                unlocked_run_number=profile.run_number,
+                unlocked_at=utc_now(),
+            )
+        )
+        profile.revision += 1
+        profile.updated_at = utc_now()
+        db.commit()
+        return get_game_state(db, user_id=user_id)
 
     for branch in branches:
         next_node = branch["next_node"]
@@ -695,6 +743,7 @@ def _constellation_layers(
     user_id: str,
     heroes: list[GameHeroModel],
 ) -> tuple[list[dict], str | None]:
+    profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
     large_nodes = (
         db.query(GameConstellationNodeModel)
         .filter_by(user_id=user_id, node_size="LARGE")
@@ -760,6 +809,7 @@ def _constellation_layers(
                 and not unlocked
                 and hero.advancement_tier == layer - 1
             )
+            spec = advancement_spec(hero.hero_code, layer)
             advancement_nodes.append(
                 {
                     "node_code": (
@@ -779,6 +829,15 @@ def _constellation_layers(
                         else "LOCKED"
                     ),
                     "advancement_tier": hero.advancement_tier,
+                    "advancement_name": spec.name,
+                    "health_essence_cost": spec.health_essence_cost,
+                    "star_shard_cost": spec.star_shard_cost,
+                    "can_afford": (
+                        is_next
+                        and profile.health_essence >= spec.health_essence_cost
+                        and profile.star_shards >= spec.star_shard_cost
+                    ),
+                    "effect_label": spec.effect_label,
                 }
             )
         layers.append(
