@@ -26,6 +26,35 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path == '/api/v1/game/state/initialize') {
+          return http.Response(
+            '{"initialized":true,"phase":"ONBOARDING",'
+            '"user_id":"anon_test","revision":0,"run_number":1,'
+            '"tower_floor":1,"highest_floor":1,"room_position":1,'
+            '"rooms_per_floor":6,"gold":0,"health_essence":0,'
+            '"star_shards":0,"transcendence_points":0,"heroes":['
+            '{"hero_code":"TANKER","role_name":"탱커","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"WARRIOR","role_name":"전사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"MAGE","role_name":"마법사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"ARCHER","role_name":"궁수","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"ROGUE","role_name":"도적","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"HEALER","role_name":"치유사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0}],'
+            '"node_counts":{"SMALL":0,"MEDIUM":0,"LARGE":0}}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.contains('/api/v1/game/rebirth/preview/')) {
+          return http.Response(
+            '{"user_id":"anon_test","revision":0,"can_rebirth":false,'
+            '"next_run_number":2,"reset":{"tower_floor":1,'
+            '"room_position":1,"gold":0,"small_nodes":0,"medium_nodes":0},'
+            '"retain":{"heroes":6,"recruited_heroes":0,"large_nodes":0,'
+            '"health_essence":0,"star_shards":0,"transcendence_points":0}}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         return http.Response('{}', 404);
       }),
     );
@@ -67,6 +96,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('game-hub')), findsOneWidget);
+    expect(find.text('첫 용사 영입을 기다리고 있어요'), findsOneWidget);
     expect(find.text('나의 6인 파티'), findsOneWidget);
     expect(find.text('탱커'), findsOneWidget);
     expect(find.text('치유사'), findsOneWidget);
@@ -84,11 +114,11 @@ void main() {
     expect(find.text('회차마다 초기화'), findsOneWidget);
     await tester.drag(
       find.byKey(const Key('rebirth-rules')),
-      const Offset(0, -400),
+      const Offset(0, -700),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('소형·중형 노드'), findsOneWidget);
+    expect(find.textContaining('소형 노드 0개'), findsOneWidget);
     expect(find.text('영구 보존'), findsOneWidget);
-    expect(find.textContaining('최고 전직 차수와 전직 외형'), findsOneWidget);
+    expect(find.textContaining('최고 전직 차수·전직 외형'), findsOneWidget);
   });
 }

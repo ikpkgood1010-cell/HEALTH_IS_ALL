@@ -3,7 +3,19 @@ from __future__ import annotations
 
 from typing import Generator
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.config import settings, utc_now
@@ -87,6 +99,98 @@ class ActivityLogModel(Base):
     detail_json = Column(String(2000), nullable=True)
     exp_gained = Column(Integer, nullable=False, default=0)
     logged_at = Column(DateTime, default=utc_now, index=True)
+
+
+class GameProfileModel(Base):
+    """Persistent run state. Permanent currencies survive rebirth."""
+
+    __tablename__ = "game_profiles"
+
+    user_id = Column(String(36), primary_key=True)
+    tower_floor = Column(Integer, nullable=False, default=1)
+    highest_floor = Column(Integer, nullable=False, default=1)
+    room_position = Column(Integer, nullable=False, default=1)
+    gold = Column(Integer, nullable=False, default=0)
+    run_number = Column(Integer, nullable=False, default=1)
+    health_essence = Column(Integer, nullable=False, default=0)
+    star_shards = Column(Integer, nullable=False, default=0)
+    transcendence_points = Column(Integer, nullable=False, default=0)
+    revision = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class GameHeroModel(Base):
+    """One deterministic slot per canonical hero role."""
+
+    __tablename__ = "game_heroes"
+
+    user_id = Column(
+        String(36),
+        ForeignKey("game_profiles.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    hero_code = Column(String(30), primary_key=True)
+    role_name = Column(String(20), nullable=False)
+    recruited = Column(Boolean, nullable=False, default=False)
+    advancement_tier = Column(Integer, nullable=False, default=0)
+    appearance_code = Column(String(50), nullable=False, default="BASE")
+    active_skill_slots = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class GameConstellationNodeModel(Base):
+    """Unlocked nodes only; SMALL/MEDIUM rows belong to one run."""
+
+    __tablename__ = "game_constellation_nodes"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "hero_code"],
+            ["game_heroes.user_id", "game_heroes.hero_code"],
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_game_constellation_nodes_user_size",
+            "user_id",
+            "node_size",
+        ),
+    )
+
+    user_id = Column(
+        String(36),
+        ForeignKey("game_profiles.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    node_code = Column(String(80), primary_key=True)
+    layer = Column(Integer, nullable=False)
+    node_size = Column(String(10), nullable=False)
+    hero_code = Column(String(30), nullable=True)
+    unlocked_run_number = Column(Integer, nullable=False)
+    unlocked_at = Column(DateTime, nullable=False, default=utc_now)
+
+
+class GameRebirthLogModel(Base):
+    """Idempotent audit record for every committed rebirth."""
+
+    __tablename__ = "game_rebirth_logs"
+    __table_args__ = (
+        Index("ix_game_rebirth_logs_user_created", "user_id", "created_at"),
+    )
+
+    rebirth_id = Column(String(36), primary_key=True)
+    user_id = Column(
+        String(36),
+        ForeignKey("game_profiles.user_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    from_run_number = Column(Integer, nullable=False)
+    to_run_number = Column(Integer, nullable=False)
+    previous_highest_floor = Column(Integer, nullable=False)
+    reset_small_nodes = Column(Integer, nullable=False)
+    reset_medium_nodes = Column(Integer, nullable=False)
+    retained_snapshot_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
 
 
 def init_db() -> bool:

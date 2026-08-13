@@ -71,4 +71,7 @@ def run(*, dry_run: bool = True, approve: bool = False, backup_reference: str = 
         return plan()
     if not approve or not backup_reference:
         raise RuntimeError("apply requires explicit approval and backup reference")
-    raise RuntimeError("use register_baseline for the approved ORM baseline only")
+    raise RuntimeError(
+        "generic apply remains blocked; baseline and pending migrations require "
+        "their dedicated approved operations"
+    )

@@ -32,7 +32,9 @@ from backend.models import (
     AdventureHistoryResponse,
     AdventureResponse,
     AdventureSettleRequest,
+    CanonicalGameStateResponse,
     GameDirectionResponse,
+    GameInitializeRequest,
     GameOverviewResponse,
     HealthIStateResponse,
     HealthRecordRequest,
@@ -41,9 +43,21 @@ from backend.models import (
     HeroRosterResponse,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
+    RebirthExecuteRequest,
+    RebirthExecuteResponse,
+    RebirthPreviewResponse,
     TrainingGroundsResponse,
 )
 from backend.game_balance_engine import build_game_overview
+from backend.idle_game_service import (
+    GameStateNotFoundError,
+    RebirthNotReadyError,
+    RebirthRevisionConflictError,
+    execute_rebirth,
+    get_game_state,
+    initialize_game_state,
+    preview_rebirth,
+)
 from backend.adventure_service import (
     AdventureNotFoundError,
     AdventureOwnershipError,
@@ -412,6 +426,81 @@ def get_game_direction() -> GameDirectionResponse:
             "star_shards",
             "transcendence_traits",
         ],
+    )
+
+
+@app.post(
+    "/api/v1/game/state/initialize",
+    response_model=CanonicalGameStateResponse,
+)
+def initialize_canonical_game(
+    request: GameInitializeRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Idempotently create the six canonical hero slots and empty run state."""
+    return CanonicalGameStateResponse(
+        **initialize_game_state(db, user_id=request.user_id)
+    )
+
+
+@app.get(
+    "/api/v1/game/state/{user_id}",
+    response_model=CanonicalGameStateResponse,
+)
+def get_canonical_game(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Read canonical game state without creating or advancing anything."""
+    try:
+        state = get_game_state(db, user_id=user_id)
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    return CanonicalGameStateResponse(**state)
+
+
+@app.get(
+    "/api/v1/game/rebirth/preview/{user_id}",
+    response_model=RebirthPreviewResponse,
+)
+def get_rebirth_preview(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> RebirthPreviewResponse:
+    """Preview exact reset/retain counts without changing game state."""
+    try:
+        result = preview_rebirth(db, user_id=user_id)
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    return RebirthPreviewResponse(**result)
+
+
+@app.post(
+    "/api/v1/game/rebirth/execute",
+    response_model=RebirthExecuteResponse,
+)
+def execute_canonical_rebirth(
+    request: RebirthExecuteRequest,
+    db: Session = Depends(get_db),
+) -> RebirthExecuteResponse:
+    """Execute a confirmed, revision-checked and idempotent rebirth."""
+    try:
+        result = execute_rebirth(
+            db,
+            user_id=request.user_id,
+            expected_revision=request.expected_revision,
+            rebirth_id=request.idempotency_key,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except RebirthRevisionConflictError as exc:
+        raise HTTPException(status_code=409, detail="game state revision conflict") from exc
+    except RebirthNotReadyError as exc:
+        raise HTTPException(status_code=409, detail="run has no progress to reset") from exc
+    return RebirthExecuteResponse(
+        rebirth_id=result.rebirth_id,
+        already_executed=result.already_executed,
+        state=CanonicalGameStateResponse(**result.state),
     )
 
 

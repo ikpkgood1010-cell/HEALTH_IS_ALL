@@ -7,7 +7,14 @@ from sqlalchemy.pool import StaticPool
 
 from backend.adventure_service import adventure_window
 from backend.config import utc_now
-from backend.database import ActivityLogModel, Base, get_db
+from backend.database import (
+    ActivityLogModel,
+    Base,
+    GameConstellationNodeModel,
+    GameHeroModel,
+    GameProfileModel,
+    get_db,
+)
 from backend.main import app
 
 
@@ -87,6 +94,80 @@ def test_canonical_idle_game_direction(client):
     assert "medium_nodes" in data["rebirth_resets"]
     assert "job_advancement_tiers" in data["rebirth_retains"]
     assert "advancement_appearance" in data["rebirth_retains"]
+
+
+def test_canonical_game_state_and_rebirth_api(journey_runtime):
+    client, testing_session = journey_runtime
+    user_id = "canonical_game_user"
+    initialized = client.post(
+        "/api/v1/game/state/initialize",
+        json={"user_id": user_id},
+    )
+    assert initialized.status_code == 200
+    assert initialized.json()["phase"] == "ONBOARDING"
+    assert len(initialized.json()["heroes"]) == 6
+    assert client.post(
+        "/api/v1/game/state/initialize",
+        json={"user_id": user_id},
+    ).json() == initialized.json()
+
+    with testing_session() as db:
+        profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
+        profile.tower_floor = 9
+        profile.room_position = 5
+        profile.gold = 900
+        hero = db.query(GameHeroModel).filter_by(
+            user_id=user_id, hero_code="TANKER"
+        ).one()
+        hero.recruited = True
+        hero.advancement_tier = 2
+        hero.appearance_code = "TANKER_TIER_2"
+        db.add_all(
+            [
+                GameConstellationNodeModel(
+                    user_id=user_id,
+                    node_code="SMALL_API_TEST",
+                    layer=1,
+                    node_size="SMALL",
+                    unlocked_run_number=1,
+                ),
+                GameConstellationNodeModel(
+                    user_id=user_id,
+                    node_code="L2_TANKER",
+                    layer=2,
+                    node_size="LARGE",
+                    hero_code="TANKER",
+                    unlocked_run_number=1,
+                ),
+            ]
+        )
+        db.commit()
+
+    preview = client.get(f"/api/v1/game/rebirth/preview/{user_id}")
+    assert preview.status_code == 200
+    assert preview.json()["reset"]["small_nodes"] == 1
+    assert preview.json()["retain"]["large_nodes"] == 1
+
+    payload = {
+        "user_id": user_id,
+        "expected_revision": 0,
+        "idempotency_key": "44444444-4444-4444-8444-444444444444",
+        "confirm": True,
+    }
+    rebirth = client.post("/api/v1/game/rebirth/execute", json=payload)
+    assert rebirth.status_code == 200
+    assert rebirth.json()["already_executed"] is False
+    state = rebirth.json()["state"]
+    assert state["tower_floor"] == 1
+    assert state["gold"] == 0
+    assert state["node_counts"] == {"SMALL": 0, "MEDIUM": 0, "LARGE": 1}
+    tanker = next(hero for hero in state["heroes"] if hero["hero_code"] == "TANKER")
+    assert tanker["advancement_tier"] == 2
+    assert tanker["appearance_code"] == "TANKER_TIER_2"
+
+    retry = client.post("/api/v1/game/rebirth/execute", json=payload)
+    assert retry.status_code == 200
+    assert retry.json()["already_executed"] is True
 
 
 def test_default_health_i_status(client):

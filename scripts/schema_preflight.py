@@ -104,8 +104,13 @@ SCHEMA_QUERIES = (
     "FROM information_schema.table_constraints tc "
     "JOIN information_schema.key_column_usage kcu "
     "USING (constraint_name, table_schema) "
-    "JOIN information_schema.constraint_column_usage ccu "
-    "USING (constraint_name, table_schema) "
+    "JOIN information_schema.referential_constraints rc "
+    "ON rc.constraint_name = tc.constraint_name "
+    "AND rc.constraint_schema = tc.table_schema "
+    "JOIN information_schema.key_column_usage ccu "
+    "ON ccu.constraint_name = rc.unique_constraint_name "
+    "AND ccu.constraint_schema = rc.unique_constraint_schema "
+    "AND ccu.ordinal_position = kcu.position_in_unique_constraint "
     "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'",
 )
 

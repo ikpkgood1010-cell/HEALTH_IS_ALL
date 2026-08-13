@@ -84,6 +84,59 @@ class GameDirectionResponse(BaseModel):
     rebirth_retains: List[str]
 
 
+class GameInitializeRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class GameHeroStateResponse(BaseModel):
+    hero_code: str
+    role_name: str
+    recruited: bool
+    advancement_tier: int
+    appearance_code: str
+    active_skill_slots: int
+
+
+class CanonicalGameStateResponse(BaseModel):
+    initialized: bool
+    phase: Literal["ONBOARDING", "IDLE_BATTLE"]
+    user_id: str
+    revision: int
+    run_number: int
+    tower_floor: int
+    highest_floor: int
+    room_position: int
+    rooms_per_floor: int
+    gold: int
+    health_essence: int
+    star_shards: int
+    transcendence_points: int
+    heroes: List[GameHeroStateResponse]
+    node_counts: Dict[str, int]
+
+
+class RebirthPreviewResponse(BaseModel):
+    user_id: str
+    revision: int
+    can_rebirth: bool
+    next_run_number: int
+    reset: Dict[str, int]
+    retain: Dict[str, Any]
+
+
+class RebirthExecuteRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    expected_revision: int = Field(..., ge=0)
+    idempotency_key: UUID4
+    confirm: Literal[True]
+
+
+class RebirthExecuteResponse(BaseModel):
+    rebirth_id: str
+    already_executed: bool
+    state: CanonicalGameStateResponse
+
+
 class AdventureSettleRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 

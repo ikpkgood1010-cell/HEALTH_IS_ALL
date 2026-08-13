@@ -75,6 +75,43 @@ class HealthIApiClient {
     return HealthIStatus.fromJson(json);
   }
 
+  /// Creates the canonical six-slot game state once and returns its current value.
+  Future<CanonicalGameState> initializeCanonicalGame(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/state/initialize');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'user_id': userId}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '게임 상태 준비 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return CanonicalGameState.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// Read-only preview; this never executes a rebirth.
+  Future<RebirthPreview> fetchRebirthPreview(String userId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/rebirth/preview/$userId');
+    final response =
+        await _client.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '환생 미리보기 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return RebirthPreview.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// Settles or returns the current 12-hour automatic adventure.
   Future<AdventureState> settleAdventure(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/game/adventures/settle');
@@ -184,6 +221,122 @@ class HealthIApiClient {
 
   void dispose() {
     _client.close();
+  }
+}
+
+class CanonicalGameHero {
+  final String heroCode;
+  final String roleName;
+  final bool recruited;
+  final int advancementTier;
+  final String appearanceCode;
+  final int activeSkillSlots;
+
+  const CanonicalGameHero({
+    required this.heroCode,
+    required this.roleName,
+    required this.recruited,
+    required this.advancementTier,
+    required this.appearanceCode,
+    required this.activeSkillSlots,
+  });
+
+  factory CanonicalGameHero.fromJson(Map<String, dynamic> json) {
+    return CanonicalGameHero(
+      heroCode: json['hero_code'] as String? ?? '',
+      roleName: json['role_name'] as String? ?? '',
+      recruited: json['recruited'] as bool? ?? false,
+      advancementTier: (json['advancement_tier'] as num?)?.toInt() ?? 0,
+      appearanceCode: json['appearance_code'] as String? ?? 'BASE',
+      activeSkillSlots: (json['active_skill_slots'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class CanonicalGameState {
+  final String phase;
+  final int revision;
+  final int runNumber;
+  final int towerFloor;
+  final int highestFloor;
+  final int roomPosition;
+  final int roomsPerFloor;
+  final int gold;
+  final int healthEssence;
+  final int starShards;
+  final int transcendencePoints;
+  final List<CanonicalGameHero> heroes;
+  final Map<String, int> nodeCounts;
+
+  const CanonicalGameState({
+    required this.phase,
+    required this.revision,
+    required this.runNumber,
+    required this.towerFloor,
+    required this.highestFloor,
+    required this.roomPosition,
+    required this.roomsPerFloor,
+    required this.gold,
+    required this.healthEssence,
+    required this.starShards,
+    required this.transcendencePoints,
+    required this.heroes,
+    required this.nodeCounts,
+  });
+
+  factory CanonicalGameState.fromJson(Map<String, dynamic> json) {
+    final counts = json['node_counts'] as Map<String, dynamic>? ?? const {};
+    return CanonicalGameState(
+      phase: json['phase'] as String? ?? 'ONBOARDING',
+      revision: (json['revision'] as num?)?.toInt() ?? 0,
+      runNumber: (json['run_number'] as num?)?.toInt() ?? 1,
+      towerFloor: (json['tower_floor'] as num?)?.toInt() ?? 1,
+      highestFloor: (json['highest_floor'] as num?)?.toInt() ?? 1,
+      roomPosition: (json['room_position'] as num?)?.toInt() ?? 1,
+      roomsPerFloor: (json['rooms_per_floor'] as num?)?.toInt() ?? 6,
+      gold: (json['gold'] as num?)?.toInt() ?? 0,
+      healthEssence: (json['health_essence'] as num?)?.toInt() ?? 0,
+      starShards: (json['star_shards'] as num?)?.toInt() ?? 0,
+      transcendencePoints: (json['transcendence_points'] as num?)?.toInt() ?? 0,
+      heroes: (json['heroes'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(CanonicalGameHero.fromJson)
+          .toList(growable: false),
+      nodeCounts: counts.map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+    );
+  }
+}
+
+class RebirthPreview {
+  final int revision;
+  final bool canRebirth;
+  final int nextRunNumber;
+  final Map<String, int> reset;
+  final Map<String, dynamic> retain;
+
+  const RebirthPreview({
+    required this.revision,
+    required this.canRebirth,
+    required this.nextRunNumber,
+    required this.reset,
+    required this.retain,
+  });
+
+  factory RebirthPreview.fromJson(Map<String, dynamic> json) {
+    final reset = json['reset'] as Map<String, dynamic>? ?? const {};
+    return RebirthPreview(
+      revision: (json['revision'] as num?)?.toInt() ?? 0,
+      canRebirth: json['can_rebirth'] as bool? ?? false,
+      nextRunNumber: (json['next_run_number'] as num?)?.toInt() ?? 2,
+      reset: reset.map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
+      retain: Map<String, dynamic>.from(
+        json['retain'] as Map<String, dynamic>? ?? const {},
+      ),
+    );
   }
 }
 

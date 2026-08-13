@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'api_client.dart';
+import 'api_data_provider.dart';
 import 'app_theme.dart';
 
 const gameOfficialName = 'HEALTH IS ALL : 건강이 전부다 !!';
@@ -36,7 +39,16 @@ class _GameScreenState extends State<GameScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ApiDataProvider>().refreshGame();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final data = context.watch<ApiDataProvider>();
     final isHub = _section == _GameSection.hub;
     return Scaffold(
       backgroundColor: const Color(0xFFF4F0E8),
@@ -51,18 +63,46 @@ class _GameScreenState extends State<GameScreen> {
               ),
         title: Text(isHub ? gameOfficialName : _sectionTitle(_section)),
       ),
-      body: SafeArea(child: isHub ? _buildHub() : _buildSection()),
+      body: SafeArea(child: isHub ? _buildHub(data) : _buildSection(data)),
     );
   }
 
-  Widget _buildHub() {
+  Widget _buildHub(ApiDataProvider data) {
+    final state = data.canonicalGame;
+    final onboarding = state == null || state.phase == 'ONBOARDING';
     return ListView(
       key: const Key('game-hub'),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        _BattleBanner(onTap: () => _open(_GameSection.battle)),
+        _BattleBanner(
+          onTap: () => _open(_GameSection.battle),
+          statusLabel: data.isGameLoading
+              ? 'LOADING'
+              : onboarding
+                  ? '준비 단계'
+                  : 'AUTO ON',
+          title: onboarding
+              ? '첫 용사 영입을 기다리고 있어요'
+              : '탑 ${state.towerFloor}층 · ${state.roomPosition}번 방',
+          message: onboarding
+              ? '0층 대형 노드에서 영입할 용사를 선택하면 자동 전투가 시작됩니다.'
+              : '6명의 용사가 다음 적을 향해 이동합니다.',
+        ),
+        if (data.gameError != null) ...[
+          const SizedBox(height: 10),
+          _GameNotice(message: data.gameError!),
+        ],
+        if (state != null) ...[
+          const SizedBox(height: 10),
+          _RunStatusCard(state: state),
+        ],
         const SizedBox(height: 18),
         Text('나의 6인 파티', style: AppTypography.titleMd),
+        const SizedBox(height: 4),
+        Text(
+          '각 용사는 0층 대형 노드에서 확정 영입합니다.',
+          style: AppTypography.captionSm,
+        ),
         const SizedBox(height: 10),
         Card(
           child: Padding(
@@ -70,22 +110,8 @@ class _GameScreenState extends State<GameScreen> {
             child: Wrap(
               alignment: WrapAlignment.spaceBetween,
               runSpacing: 12,
-              children: _heroes
-                  .map((hero) => SizedBox(
-                        width: 74,
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: const Color(0xFFFFE5A5),
-                              foregroundColor: const Color(0xFF6A451F),
-                              child: Icon(hero.$2),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(hero.$1, style: AppTypography.captionSm),
-                          ],
-                        ),
-                      ))
-                  .toList(),
+              children:
+                  _heroes.map((hero) => _buildHeroSlot(hero, state)).toList(),
             ),
           ),
         ),
@@ -154,7 +180,40 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildSection() {
+  Widget _buildHeroSlot(
+    (String, IconData) hero,
+    CanonicalGameState? state,
+  ) {
+    CanonicalGameHero? saved;
+    for (final item in state?.heroes ?? const <CanonicalGameHero>[]) {
+      if (item.roleName == hero.$1) {
+        saved = item;
+        break;
+      }
+    }
+    final recruited = saved?.recruited ?? false;
+    return SizedBox(
+      width: 74,
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor:
+                recruited ? const Color(0xFFFFE5A5) : AppColors.neutral200,
+            foregroundColor:
+                recruited ? const Color(0xFF6A451F) : AppColors.neutral500,
+            child: Icon(recruited ? hero.$2 : Icons.lock_outline_rounded),
+          ),
+          const SizedBox(height: 6),
+          Text(hero.$1, style: AppTypography.captionSm),
+          if ((saved?.advancementTier ?? 0) > 0)
+            Text('전직 ${saved!.advancementTier}',
+                style: AppTypography.captionSm),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(ApiDataProvider data) {
     switch (_section) {
       case _GameSection.battle:
         return _DetailList(
@@ -199,7 +258,7 @@ class _GameScreenState extends State<GameScreen> {
           ],
         );
       case _GameSection.rebirth:
-        return const _RebirthDetail();
+        return _RebirthDetail(preview: data.rebirthPreview);
       case _GameSection.hallOfFame:
         return const _DetailList(
           title: '명예의 전당',
@@ -233,8 +292,16 @@ class _GameScreenState extends State<GameScreen> {
 
 class _BattleBanner extends StatelessWidget {
   final VoidCallback onTap;
+  final String statusLabel;
+  final String title;
+  final String message;
 
-  const _BattleBanner({required this.onTap});
+  const _BattleBanner({
+    required this.onTap,
+    required this.statusLabel,
+    required this.title,
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -248,26 +315,26 @@ class _BattleBanner extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD36E)),
-                  SizedBox(width: 8),
-                  Text('자동 전투 진행 중',
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: Color(0xFFFFD36E)),
+                  const SizedBox(width: 8),
+                  const Text('자동 전투',
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.w700)),
-                  Spacer(),
-                  _StatusPill(label: 'AUTO ON'),
+                  const Spacer(),
+                  _StatusPill(label: statusLabel),
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('탑 1층 · 1번 방',
-                  style: TextStyle(
+              Text(title,
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              const Text('6명의 용사가 다음 적을 향해 이동합니다.',
-                  style: TextStyle(color: Color(0xFFD8DEEF))),
+              Text(message, style: const TextStyle(color: Color(0xFFD8DEEF))),
               const SizedBox(height: 18),
               FilledButton.tonalIcon(
                 onPressed: onTap,
@@ -298,6 +365,50 @@ class _StatusPill extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 11,
                 fontWeight: FontWeight.w800)),
+      );
+}
+
+class _GameNotice extends StatelessWidget {
+  final String message;
+
+  const _GameNotice({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        color: const Color(0xFFFFF3D6),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, color: Color(0xFF8B5E34)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(message, style: AppTypography.captionSm)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _RunStatusCard extends StatelessWidget {
+  final CanonicalGameState state;
+
+  const _RunStatusCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Wrap(
+            spacing: 18,
+            runSpacing: 8,
+            children: [
+              Text('회차 ${state.runNumber}', style: AppTypography.captionSm),
+              Text('최고 ${state.highestFloor}층', style: AppTypography.captionSm),
+              Text('골드 ${state.gold}', style: AppTypography.captionSm),
+              Text('별 조각 ${state.starShards}', style: AppTypography.captionSm),
+            ],
+          ),
+        ),
       );
 }
 
@@ -404,39 +515,56 @@ class _HeroDetail extends StatelessWidget {
 }
 
 class _RebirthDetail extends StatelessWidget {
-  const _RebirthDetail();
+  final RebirthPreview? preview;
+
+  const _RebirthDetail({required this.preview});
 
   @override
-  Widget build(BuildContext context) => ListView(
-        key: const Key('rebirth-rules'),
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('환생 규칙', style: AppTypography.displayLg),
-          const SizedBox(height: 8),
-          Text('반복 성장의 재미는 되살리되, 어렵게 얻은 용사와 전직은 빼앗지 않습니다.',
-              style: AppTypography.bodyMd),
-          const SizedBox(height: 20),
-          const _RuleCard(
-            color: Color(0xFFFFEEE7),
-            icon: Icons.restart_alt_rounded,
-            title: '회차마다 초기화',
-            items: ['탑 도달 층과 현재 방', '골드와 회차 전용 버프', '소형·중형 노드'],
-          ),
-          const SizedBox(height: 12),
-          const _RuleCard(
-            color: Color(0xFFE8F7ED),
-            icon: Icons.lock_rounded,
-            title: '영구 보존',
-            items: [
-              '영입한 6인 용사',
-              '최고 전직 차수와 전직 외형',
-              '대형 노드',
-              '스킬·아바타·정령',
-              '건강 정수·별 조각·초월 특성'
-            ],
-          ),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final reset = preview?.reset ?? const <String, int>{};
+    final retain = preview?.retain ?? const <String, dynamic>{};
+    return ListView(
+      key: const Key('rebirth-rules'),
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text('환생 규칙', style: AppTypography.displayLg),
+        const SizedBox(height: 8),
+        Text('반복 성장의 재미는 되살리되, 어렵게 얻은 용사와 전직은 빼앗지 않습니다.',
+            style: AppTypography.bodyMd),
+        const SizedBox(height: 12),
+        _GameNotice(
+          message: preview == null
+              ? '서버 미리보기를 불러오기 전입니다. 환생 실행 버튼은 제공하지 않습니다.'
+              : preview!.canRebirth
+                  ? '다음 환생은 ${preview!.nextRunNumber}회차입니다. 아래 수량을 확인한 뒤에만 실행할 수 있습니다.'
+                  : '아직 초기화할 회차 진행이 없어 환생할 수 없습니다.',
+        ),
+        const SizedBox(height: 12),
+        _RuleCard(
+          color: const Color(0xFFFFEEE7),
+          icon: Icons.restart_alt_rounded,
+          title: '회차마다 초기화',
+          items: [
+            '탑 ${reset['tower_floor'] ?? 1}층 · ${reset['room_position'] ?? 1}번 방',
+            '골드 ${reset['gold'] ?? 0}',
+            '소형 노드 ${reset['small_nodes'] ?? 0}개 · 중형 노드 ${reset['medium_nodes'] ?? 0}개',
+          ],
+        ),
+        const SizedBox(height: 12),
+        _RuleCard(
+          color: const Color(0xFFE8F7ED),
+          icon: Icons.lock_rounded,
+          title: '영구 보존',
+          items: [
+            '영입 상태와 최고 전직 차수·전직 외형',
+            '대형 노드 ${retain['large_nodes'] ?? 0}개',
+            '스킬·아바타·정령',
+            '건강 정수 ${retain['health_essence'] ?? 0} · 별 조각 ${retain['star_shards'] ?? 0} · 초월 ${retain['transcendence_points'] ?? 0}',
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _RuleCard extends StatelessWidget {

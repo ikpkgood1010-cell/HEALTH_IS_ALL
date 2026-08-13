@@ -31,11 +31,11 @@ class ApiDataProvider extends ChangeNotifier {
   String _dialogue = '오늘 하루도 차근차근 시작해볼까요?';
 
   double _consumedCalories = 0;
-  int _targetCalories = 2000;
+  final int _targetCalories = 2000;
   double _workoutMinutes = 0;
-  int _targetWorkoutMinutes = 45;
+  final int _targetWorkoutMinutes = 45;
   double _waterLiters = 0;
-  double _targetWaterLiters = 2.0;
+  final double _targetWaterLiters = 2.0;
   int _streakDays = 0;
 
   bool _isLoading = false;
@@ -47,6 +47,10 @@ class ApiDataProvider extends ChangeNotifier {
   List<HeroCompanion> _heroRoster = const [];
   bool _isGuildLoading = false;
   String? _guildError;
+  CanonicalGameState? _canonicalGame;
+  RebirthPreview? _rebirthPreview;
+  bool _isGameLoading = false;
+  String? _gameError;
   final Map<String, String> _pendingRecordKeys = {};
 
   String get healthIName => _healthIName;
@@ -74,6 +78,10 @@ class ApiDataProvider extends ChangeNotifier {
   List<HeroCompanion> get heroRoster => _heroRoster;
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
+  CanonicalGameState? get canonicalGame => _canonicalGame;
+  RebirthPreview? get rebirthPreview => _rebirthPreview;
+  bool get isGameLoading => _isGameLoading;
+  String? get gameError => _gameError;
 
   /// 서버에서 현재 상태를 불러와 화면에 반영한다.
   /// 화면 진입 시(initState) 호출하도록 설계되었다.
@@ -98,6 +106,22 @@ class ApiDataProvider extends ChangeNotifier {
       _lastError = '서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Initializes the persistent game shell once, then loads a read-only rebirth preview.
+  Future<void> refreshGame() async {
+    _isGameLoading = true;
+    _gameError = null;
+    notifyListeners();
+    try {
+      _canonicalGame = await _api.initializeCanonicalGame(userId);
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+    } catch (_) {
+      _gameError = '게임 서버 상태를 불러오지 못했어요. 기획 미리보기로 표시합니다.';
+    } finally {
+      _isGameLoading = false;
       notifyListeners();
     }
   }
