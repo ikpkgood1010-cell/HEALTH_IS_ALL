@@ -133,6 +133,11 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
     ordered_heroes = [by_code[code] for code, _ in HERO_ROLES if code in by_code]
     node_counts = _node_counts(db, user_id=user_id)
     recruited_count = sum(1 for hero in ordered_heroes if hero.recruited)
+    constellation_layers, starter_hero_code = _constellation_layers(
+        db,
+        user_id=user_id,
+        heroes=ordered_heroes,
+    )
 
     return {
         "initialized": True,
@@ -149,10 +154,12 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
         "star_shards": profile.star_shards,
         "transcendence_points": profile.transcendence_points,
         "initial_hero_selected": recruited_count > 0,
+        "starter_hero_code": starter_hero_code,
         "large_node_slots_by_layer": {
             "0": 5,
             **{str(layer): 6 for layer in range(1, 7)},
         },
+        "constellation_layers": constellation_layers,
         "heroes": [
             {
                 "hero_code": hero.hero_code,
@@ -308,3 +315,106 @@ def _node_counts(db: Session, *, user_id: str) -> dict[str, int]:
     values = {size: 0 for size in ("SMALL", "MEDIUM", "LARGE")}
     values.update({str(size): int(count) for size, count in rows})
     return values
+
+
+def _constellation_layers(
+    db: Session,
+    *,
+    user_id: str,
+    heroes: list[GameHeroModel],
+) -> tuple[list[dict], str | None]:
+    large_nodes = (
+        db.query(GameConstellationNodeModel)
+        .filter_by(user_id=user_id, node_size="LARGE")
+        .all()
+    )
+    node_by_layer_hero = {
+        (node.layer, node.hero_code): node
+        for node in large_nodes
+        if node.hero_code is not None
+    }
+    layer_zero_heroes = {
+        hero_code
+        for layer, hero_code in node_by_layer_hero
+        if layer == 0
+    }
+    starter_hero_code = next(
+        (
+            hero.hero_code
+            for hero in heroes
+            if hero.recruited and hero.hero_code not in layer_zero_heroes
+        ),
+        None,
+    )
+
+    layers: list[dict] = []
+    recruit_nodes = []
+    if starter_hero_code is not None:
+        for hero in heroes:
+            if hero.hero_code == starter_hero_code:
+                continue
+            saved_node = node_by_layer_hero.get((0, hero.hero_code))
+            recruit_nodes.append(
+                {
+                    "node_code": (
+                        saved_node.node_code
+                        if saved_node is not None
+                        else f"L0_RECRUIT_{hero.hero_code}"
+                    ),
+                    "layer": 0,
+                    "hero_code": hero.hero_code,
+                    "role_name": hero.role_name,
+                    "node_kind": "RECRUIT",
+                    "state": "UNLOCKED" if hero.recruited else "LOCKED",
+                    "advancement_tier": hero.advancement_tier,
+                }
+            )
+    layers.append(
+        {
+            "layer": 0,
+            "title": "용사 영입",
+            "node_count": len(recruit_nodes),
+            "nodes": recruit_nodes,
+        }
+    )
+
+    for layer in range(1, 7):
+        advancement_nodes = []
+        for hero in heroes:
+            saved_node = node_by_layer_hero.get((layer, hero.hero_code))
+            unlocked = saved_node is not None or hero.advancement_tier >= layer
+            is_next = (
+                hero.recruited
+                and not unlocked
+                and hero.advancement_tier == layer - 1
+            )
+            advancement_nodes.append(
+                {
+                    "node_code": (
+                        saved_node.node_code
+                        if saved_node is not None
+                        else f"L{layer}_ADVANCE_{hero.hero_code}"
+                    ),
+                    "layer": layer,
+                    "hero_code": hero.hero_code,
+                    "role_name": hero.role_name,
+                    "node_kind": "ADVANCEMENT",
+                    "state": (
+                        "UNLOCKED"
+                        if unlocked
+                        else "NEXT"
+                        if is_next
+                        else "LOCKED"
+                    ),
+                    "advancement_tier": hero.advancement_tier,
+                }
+            )
+        layers.append(
+            {
+                "layer": layer,
+                "title": f"{layer}차 전직",
+                "node_count": len(advancement_nodes),
+                "nodes": advancement_nodes,
+            }
+        )
+    return layers, starter_hero_code

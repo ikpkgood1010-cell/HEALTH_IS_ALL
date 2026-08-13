@@ -282,6 +282,62 @@ class CanonicalGameHero {
   }
 }
 
+class ConstellationNodeState {
+  final String nodeCode;
+  final int layer;
+  final String heroCode;
+  final String roleName;
+  final String nodeKind;
+  final String state;
+  final int advancementTier;
+
+  const ConstellationNodeState({
+    required this.nodeCode,
+    required this.layer,
+    required this.heroCode,
+    required this.roleName,
+    required this.nodeKind,
+    required this.state,
+    required this.advancementTier,
+  });
+
+  factory ConstellationNodeState.fromJson(Map<String, dynamic> json) =>
+      ConstellationNodeState(
+        nodeCode: json['node_code'] as String? ?? '',
+        layer: (json['layer'] as num?)?.toInt() ?? 0,
+        heroCode: json['hero_code'] as String? ?? '',
+        roleName: json['role_name'] as String? ?? '',
+        nodeKind: json['node_kind'] as String? ?? 'ADVANCEMENT',
+        state: json['state'] as String? ?? 'LOCKED',
+        advancementTier: (json['advancement_tier'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class ConstellationLayerState {
+  final int layer;
+  final String title;
+  final int nodeCount;
+  final List<ConstellationNodeState> nodes;
+
+  const ConstellationLayerState({
+    required this.layer,
+    required this.title,
+    required this.nodeCount,
+    required this.nodes,
+  });
+
+  factory ConstellationLayerState.fromJson(Map<String, dynamic> json) =>
+      ConstellationLayerState(
+        layer: (json['layer'] as num?)?.toInt() ?? 0,
+        title: json['title'] as String? ?? '',
+        nodeCount: (json['node_count'] as num?)?.toInt() ?? 0,
+        nodes: (json['nodes'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ConstellationNodeState.fromJson)
+            .toList(growable: false),
+      );
+}
+
 class CanonicalGameState {
   final String phase;
   final int revision;
@@ -295,7 +351,9 @@ class CanonicalGameState {
   final int starShards;
   final int transcendencePoints;
   final bool initialHeroSelected;
+  final String? starterHeroCode;
   final Map<String, int> largeNodeSlotsByLayer;
+  final List<ConstellationLayerState> constellationLayers;
   final List<CanonicalGameHero> heroes;
   final Map<String, int> nodeCounts;
 
@@ -312,7 +370,9 @@ class CanonicalGameState {
     required this.starShards,
     required this.transcendencePoints,
     required this.initialHeroSelected,
+    required this.starterHeroCode,
     required this.largeNodeSlotsByLayer,
+    required this.constellationLayers,
     required this.heroes,
     required this.nodeCounts,
   });
@@ -334,9 +394,15 @@ class CanonicalGameState {
       starShards: (json['star_shards'] as num?)?.toInt() ?? 0,
       transcendencePoints: (json['transcendence_points'] as num?)?.toInt() ?? 0,
       initialHeroSelected: json['initial_hero_selected'] as bool? ?? false,
+      starterHeroCode: json['starter_hero_code'] as String?,
       largeNodeSlotsByLayer: nodeSlots.map(
         (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
       ),
+      constellationLayers:
+          (json['constellation_layers'] as List<dynamic>? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(ConstellationLayerState.fromJson)
+              .toList(growable: false),
       heroes: (json['heroes'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(CanonicalGameHero.fromJson)

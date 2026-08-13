@@ -103,6 +103,23 @@ class GameHeroStateResponse(BaseModel):
     active_skill_slots: int
 
 
+class ConstellationNodeStateResponse(BaseModel):
+    node_code: str
+    layer: int
+    hero_code: str
+    role_name: str
+    node_kind: Literal["RECRUIT", "ADVANCEMENT"]
+    state: Literal["UNLOCKED", "NEXT", "LOCKED"]
+    advancement_tier: int
+
+
+class ConstellationLayerStateResponse(BaseModel):
+    layer: int
+    title: str
+    node_count: int
+    nodes: List[ConstellationNodeStateResponse]
+
+
 class CanonicalGameStateResponse(BaseModel):
     initialized: bool
     phase: Literal["ONBOARDING", "IDLE_BATTLE"]
@@ -118,7 +135,9 @@ class CanonicalGameStateResponse(BaseModel):
     star_shards: int
     transcendence_points: int
     initial_hero_selected: bool
+    starter_hero_code: Optional[str]
     large_node_slots_by_layer: Dict[str, int]
+    constellation_layers: List[ConstellationLayerStateResponse]
     heroes: List[GameHeroStateResponse]
     node_counts: Dict[str, int]
 

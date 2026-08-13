@@ -131,8 +131,11 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
     assert starter.status_code == 200
     assert starter.json()["phase"] == "IDLE_BATTLE"
     assert starter.json()["revision"] == 1
+    assert starter.json()["starter_hero_code"] == "TANKER"
     assert starter.json()["node_counts"]["LARGE"] == 0
     assert sum(hero["recruited"] for hero in starter.json()["heroes"]) == 1
+    assert starter.json()["constellation_layers"][0]["node_count"] == 5
+    assert starter.json()["constellation_layers"][1]["node_count"] == 6
 
     conflicting_starter = client.post(
         "/api/v1/game/heroes/select-initial",

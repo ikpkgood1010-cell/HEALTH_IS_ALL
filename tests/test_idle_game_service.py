@@ -81,10 +81,26 @@ def test_initial_hero_is_free_exactly_once_and_uses_no_large_node(db_session):
     assert selected["phase"] == "IDLE_BATTLE"
     assert selected["revision"] == 1
     assert selected["initial_hero_selected"] is True
+    assert selected["starter_hero_code"] == "MAGE"
     assert selected["node_counts"]["LARGE"] == 0
     assert [
         hero["hero_code"] for hero in selected["heroes"] if hero["recruited"]
     ] == ["MAGE"]
+    layer_zero = selected["constellation_layers"][0]
+    assert layer_zero["node_count"] == 5
+    assert {node["hero_code"] for node in layer_zero["nodes"]} == {
+        "TANKER",
+        "WARRIOR",
+        "ARCHER",
+        "ROGUE",
+        "HEALER",
+    }
+    assert {node["state"] for node in layer_zero["nodes"]} == {"LOCKED"}
+    first_advancement = selected["constellation_layers"][1]
+    assert first_advancement["node_count"] == 6
+    assert next(
+        node for node in first_advancement["nodes"] if node["hero_code"] == "MAGE"
+    )["state"] == "NEXT"
 
     retry = select_initial_hero(
         db_session,

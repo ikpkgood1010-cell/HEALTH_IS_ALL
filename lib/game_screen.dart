@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -243,16 +245,7 @@ class _GameScreenState extends State<GameScreen> {
       case _GameSection.heroes:
         return _HeroDetail(heroes: _heroes);
       case _GameSection.constellation:
-        return const _DetailList(
-          title: '360° 별자리 성장판',
-          description: '첫 용사 1명은 무료 선택하고, 0계층에서 나머지 5명을 영입합니다.',
-          items: [
-            '0계층 대형 노드 5개: 나머지 용사 확정 영입',
-            '1~6층 대형 노드: 용사별 개별 전직',
-            '소형·중형 노드: 회차 성장, 환생 시 초기화',
-            '대형 노드·전직·전직 외형: 영구 보존',
-          ],
-        );
+        return _ConstellationDetail(state: data.canonicalGame);
       case _GameSection.spirits:
         return const _DetailList(
           title: '정령 확정 부화',
@@ -610,6 +603,359 @@ class _HeroDetail extends StatelessWidget {
         ],
       );
 }
+
+class _ConstellationDetail extends StatefulWidget {
+  final CanonicalGameState? state;
+
+  const _ConstellationDetail({required this.state});
+
+  @override
+  State<_ConstellationDetail> createState() => _ConstellationDetailState();
+}
+
+class _ConstellationDetailState extends State<_ConstellationDetail> {
+  int _selectedLayer = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final layers = state?.constellationLayers ?? const [];
+    ConstellationLayerState? selected;
+    for (final layer in layers) {
+      if (layer.layer == _selectedLayer) selected = layer;
+    }
+
+    return ListView(
+      key: const Key('constellation-detail'),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      children: [
+        Text('360° 별자리 성장판', style: AppTypography.displayLg),
+        const SizedBox(height: 8),
+        Text(
+          '중앙 0계층에서 5명을 영입하고, 바깥 1~6계층에서 여섯 용사를 개별 전직합니다.',
+          style: AppTypography.bodyMd,
+        ),
+        const SizedBox(height: 12),
+        if (state == null || !state.initialHeroSelected)
+          const _GameNotice(
+            message: '첫 무료 용사를 선택하면 중앙 0계층의 영입 노드 5개가 열립니다.',
+          )
+        else
+          _StarterHeroCard(
+            roleName: _roleNameForCode(state.starterHeroCode),
+          ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var layer = 0; layer <= 6; layer++) ...[
+                ChoiceChip(
+                  key: Key('constellation-layer-$layer'),
+                  label: Text(layer == 0 ? '0계층 · 영입' : '$layer계층'),
+                  selected: _selectedLayer == layer,
+                  onSelected: state?.initialHeroSelected == true
+                      ? (_) => setState(() => _selectedLayer = layer)
+                      : null,
+                ),
+                if (layer != 6) const SizedBox(width: 7),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _ConstellationBoard(
+          layer: _selectedLayer,
+          nodes: selected?.nodes ?? const [],
+        ),
+        const SizedBox(height: 12),
+        _ConstellationLayerSummary(
+          layer: _selectedLayer,
+          nodes: selected?.nodes ?? const [],
+          starterSelected: state?.initialHeroSelected ?? false,
+        ),
+        const SizedBox(height: 12),
+        const _DetailRuleCard(),
+      ],
+    );
+  }
+}
+
+class _StarterHeroCard extends StatelessWidget {
+  final String roleName;
+
+  const _StarterHeroCard({required this.roleName});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        color: const Color(0xFFFFF3D6),
+        child: ListTile(
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xFFFFD36E),
+            child: Icon(Icons.star_rounded, color: Color(0xFF6A451F)),
+          ),
+          title: Text('무료 첫 용사 · $roleName'),
+          subtitle: const Text('0계층 영입 노드를 사용하지 않으며 환생 후에도 영구 보존됩니다.'),
+        ),
+      );
+}
+
+class _ConstellationBoard extends StatelessWidget {
+  final int layer;
+  final List<ConstellationNodeState> nodes;
+
+  const _ConstellationBoard({required this.layer, required this.nodes});
+
+  static const _radiusByLayer = [0.09, 0.16, 0.245, 0.325, 0.39, 0.445, 0.475];
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Card(
+            color: const Color(0xFF071426),
+            clipBehavior: Clip.antiAlias,
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 3,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final side = math.min(
+                        constraints.maxWidth,
+                        constraints.maxHeight,
+                      );
+                      final center = side / 2;
+                      final radius = side * _radiusByLayer[layer];
+                      return Stack(
+                        key: const Key('constellation-board'),
+                        children: [
+                          Positioned.fill(
+                            child: Image.asset(
+                              'assets/images/game/constellation_board_base.png',
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            ),
+                          ),
+                          for (var index = 0; index < nodes.length; index++)
+                            _positionedNode(
+                              node: nodes[index],
+                              index: index,
+                              count: nodes.length,
+                              center: center,
+                              radius: radius,
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _positionedNode({
+    required ConstellationNodeState node,
+    required int index,
+    required int count,
+    required double center,
+    required double radius,
+  }) {
+    final angle = -math.pi / 2 + (2 * math.pi * index / math.max(count, 1));
+    const markerSize = 38.0;
+    return Positioned(
+      left: center + radius * math.cos(angle) - markerSize / 2,
+      top: center + radius * math.sin(angle) - markerSize / 2,
+      width: markerSize,
+      height: markerSize,
+      child: _ConstellationNodeMarker(node: node),
+    );
+  }
+}
+
+class _ConstellationNodeMarker extends StatelessWidget {
+  final ConstellationNodeState node;
+
+  const _ConstellationNodeMarker({required this.node});
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = node.state == 'UNLOCKED';
+    final next = node.state == 'NEXT';
+    final background = unlocked
+        ? const Color(0xFFFFD36E)
+        : next
+            ? const Color(0xFF6ED4B2)
+            : const Color(0xFF34435D);
+    final foreground = unlocked
+        ? const Color(0xFF5C3B16)
+        : next
+            ? const Color(0xFF123D35)
+            : const Color(0xFFB8C0D2);
+    return Tooltip(
+      message: '${node.roleName} · ${_nodeStateLabel(node)}',
+      child: Container(
+        key: Key('constellation-node-${node.layer}-${node.heroCode}'),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: background,
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.75), width: 2),
+          boxShadow: const [
+            BoxShadow(
+                color: Colors.black38, blurRadius: 5, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Icon(
+          unlocked
+              ? Icons.check_rounded
+              : next
+                  ? _roleIcon(node.heroCode)
+                  : Icons.lock_rounded,
+          size: 20,
+          color: foreground,
+        ),
+      ),
+    );
+  }
+}
+
+class _ConstellationLayerSummary extends StatelessWidget {
+  final int layer;
+  final List<ConstellationNodeState> nodes;
+  final bool starterSelected;
+
+  const _ConstellationLayerSummary({
+    required this.layer,
+    required this.nodes,
+    required this.starterSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!starterSelected) {
+      return const _GameNotice(message: '첫 용사 선택 전에는 별자리 노드를 표시하지 않습니다.');
+    }
+    final unlocked = nodes.where((node) => node.state == 'UNLOCKED').length;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              layer == 0 ? '0계층 · 남은 용사 영입' : '$layer계층 · $layer차 전직',
+              style: AppTypography.titleMd,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${nodes.length}개 중 $unlocked개 해금',
+              style: AppTypography.captionSm,
+            ),
+            const SizedBox(height: 10),
+            for (final node in nodes)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(_roleIcon(node.heroCode), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(node.roleName)),
+                    Text(_nodeStateLabel(node), style: AppTypography.captionSm),
+                  ],
+                ),
+              ),
+            if (nodes.any((node) => node.state != 'UNLOCKED')) ...[
+              const SizedBox(height: 10),
+              Text(
+                layer == 0
+                    ? '영입 비용은 밸런스 확정 후 활성화됩니다.'
+                    : '전직 비용은 밸런스 확정 후 활성화됩니다.',
+                style: AppTypography.captionSm,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRuleCard extends StatelessWidget {
+  const _DetailRuleCard();
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      '0계층: 무료 첫 용사를 제외한 영입 노드 5개',
+      '1~6계층: 용사별 전직 노드 각 6개',
+      '소형·중형 노드: 회차 성장, 환생 시 초기화',
+      '대형 노드·전직·전직 외형: 영구 보존',
+    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('보존 규칙', style: AppTypography.titleMd),
+            const SizedBox(height: 4),
+            Text(
+              '대형 노드와 전직은 수집 성과이므로 환생해도 사라지지 않습니다.',
+              style: AppTypography.captionSm,
+            ),
+            const SizedBox(height: 10),
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        size: 18, color: AppColors.primary500),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text(item)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _nodeStateLabel(ConstellationNodeState node) => switch (node.state) {
+      'UNLOCKED' => node.nodeKind == 'RECRUIT' ? '영입 완료' : '전직 완료',
+      'NEXT' => '다음 전직',
+      _ => '잠김',
+    };
+
+String _roleNameForCode(String? heroCode) => switch (heroCode) {
+      'TANKER' => '탱커',
+      'WARRIOR' => '전사',
+      'MAGE' => '마법사',
+      'ARCHER' => '궁수',
+      'ROGUE' => '도적',
+      'HEALER' => '치유사',
+      _ => '선택 전',
+    };
+
+IconData _roleIcon(String heroCode) => switch (heroCode) {
+      'TANKER' => Icons.shield_rounded,
+      'WARRIOR' => Icons.sports_martial_arts_rounded,
+      'MAGE' => Icons.auto_fix_high_rounded,
+      'ARCHER' => Icons.gps_fixed_rounded,
+      'ROGUE' => Icons.bolt_rounded,
+      'HEALER' => Icons.healing_rounded,
+      _ => Icons.star_outline_rounded,
+    };
 
 class _RebirthDetail extends StatelessWidget {
   final RebirthPreview? preview;

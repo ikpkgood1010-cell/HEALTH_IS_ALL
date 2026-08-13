@@ -78,3 +78,14 @@
 - 결정: 세로 캔버스 내 축소를 더 요청하지 않는다. 좌우만 아웃페인팅한 1:1 정사각형
   원형 보드 에셋으로 생성하고 Flutter에서 `BoxFit.contain`으로 세로 화면에 배치한다.
 - 판정: 색·재질 레퍼런스로만 보관. 런타임 미적용.
+
+## 별자리 최종본 승인 — 2026-08-14
+
+파일: `strict_image_edit_outpainting_transform_the_canvas_from_9_16_vertical_to_a.png`
+
+- 기술: 1024×1024 PNG, 24-bit RGB, 약 1.43MB. 배경 에셋이므로 알파 채널 불필요.
+- 구조: 중앙 영역을 0계층으로 사용하고 완전하게 보이는 바깥 고리 6개를 1~6계층으로 사용.
+- 장점: 외곽 원 잘림 없음, 중앙 정렬, 어두운 우주·석재·황금빛의 게임 색감 적합.
+- 적용: `assets/images/game/constellation_board_base.png`로 등록.
+- UI: Flutter가 `BoxFit.contain`과 내부 패딩을 사용하고 선택 계층의 노드를 동적으로 덧씌움.
+- 판정: **APPROVED / RUNTIME ASSET**. 같은 목적의 Stitch 재생성은 중단한다.

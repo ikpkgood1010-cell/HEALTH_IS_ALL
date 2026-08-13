@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_test/flutter_test.dart';
@@ -49,21 +51,7 @@ void main() {
         }
         if (request.url.path == '/api/v1/game/heroes/select-initial') {
           return http.Response(
-            '{"initialized":true,"phase":"IDLE_BATTLE",'
-            '"user_id":"anon_test","revision":1,"run_number":1,'
-            '"tower_floor":1,"highest_floor":1,"room_position":1,'
-            '"rooms_per_floor":6,"gold":0,"health_essence":0,'
-            '"star_shards":0,"transcendence_points":0,'
-            '"initial_hero_selected":true,'
-            '"large_node_slots_by_layer":{"0":5,"1":6,"2":6,"3":6,"4":6,"5":6,"6":6},'
-            '"heroes":['
-            '{"hero_code":"TANKER","role_name":"탱커","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
-            '{"hero_code":"WARRIOR","role_name":"전사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
-            '{"hero_code":"MAGE","role_name":"마법사","recruited":true,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
-            '{"hero_code":"ARCHER","role_name":"궁수","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
-            '{"hero_code":"ROGUE","role_name":"도적","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
-            '{"hero_code":"HEALER","role_name":"치유사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0}],'
-            '"node_counts":{"SMALL":0,"MEDIUM":0,"LARGE":0}}',
+            jsonEncode(_selectedGameState()),
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
@@ -166,4 +154,113 @@ void main() {
     expect(find.byKey(const Key('initial-hero-selector')), findsNothing);
     expect(find.text('1명의 용사가 다음 적을 향해 이동합니다.'), findsOneWidget);
   });
+
+  testWidgets('승인 배경 위에 0계층 5개와 전직 계층 6개를 표시한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('constellation-board')), findsOneWidget);
+    expect(find.byKey(const Key('constellation-node-0-MAGE')), findsNothing);
+    for (final code in ['TANKER', 'WARRIOR', 'ARCHER', 'ROGUE', 'HEALER']) {
+      expect(find.byKey(Key('constellation-node-0-$code')), findsOneWidget);
+    }
+
+    await tester.tap(find.byKey(const Key('constellation-layer-1')));
+    await tester.pumpAndSettle();
+    for (final code in [
+      'TANKER',
+      'WARRIOR',
+      'MAGE',
+      'ARCHER',
+      'ROGUE',
+      'HEALER'
+    ]) {
+      expect(find.byKey(Key('constellation-node-1-$code')), findsOneWidget);
+    }
+    expect(find.text('무료 첫 용사 · 마법사'), findsOneWidget);
+  });
+}
+
+Map<String, dynamic> _selectedGameState() {
+  const roles = [
+    ('TANKER', '탱커'),
+    ('WARRIOR', '전사'),
+    ('MAGE', '마법사'),
+    ('ARCHER', '궁수'),
+    ('ROGUE', '도적'),
+    ('HEALER', '치유사'),
+  ];
+  Map<String, dynamic> node((String, String) role, int layer) => {
+        'node_code': layer == 0
+            ? 'L0_RECRUIT_${role.$1}'
+            : 'L${layer}_ADVANCE_${role.$1}',
+        'layer': layer,
+        'hero_code': role.$1,
+        'role_name': role.$2,
+        'node_kind': layer == 0 ? 'RECRUIT' : 'ADVANCEMENT',
+        'state': layer == 1 && role.$1 == 'MAGE' ? 'NEXT' : 'LOCKED',
+        'advancement_tier': 0,
+      };
+  return {
+    'initialized': true,
+    'phase': 'IDLE_BATTLE',
+    'user_id': 'anon_test',
+    'revision': 1,
+    'run_number': 1,
+    'tower_floor': 1,
+    'highest_floor': 1,
+    'room_position': 1,
+    'rooms_per_floor': 6,
+    'gold': 0,
+    'health_essence': 0,
+    'star_shards': 0,
+    'transcendence_points': 0,
+    'initial_hero_selected': true,
+    'starter_hero_code': 'MAGE',
+    'large_node_slots_by_layer': {
+      '0': 5,
+      for (var layer = 1; layer <= 6; layer++) '$layer': 6,
+    },
+    'constellation_layers': [
+      {
+        'layer': 0,
+        'title': '용사 영입',
+        'node_count': 5,
+        'nodes': [
+          for (final role in roles.where((role) => role.$1 != 'MAGE'))
+            node(role, 0)
+        ],
+      },
+      for (var layer = 1; layer <= 6; layer++)
+        {
+          'layer': layer,
+          'title': '$layer차 전직',
+          'node_count': 6,
+          'nodes': [for (final role in roles) node(role, layer)],
+        },
+    ],
+    'heroes': [
+      for (final role in roles)
+        {
+          'hero_code': role.$1,
+          'role_name': role.$2,
+          'recruited': role.$1 == 'MAGE',
+          'advancement_tier': 0,
+          'appearance_code': 'BASE',
+          'active_skill_slots': 0,
+        },
+    ],
+    'node_counts': {'SMALL': 0, 'MEDIUM': 0, 'LARGE': 0},
+  };
 }
