@@ -56,6 +56,28 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path == '/api/v1/game/battle/settle') {
+          final state = _selectedGameState()
+            ..['tower_floor'] = 2
+            ..['room_position'] = 3
+            ..['gold'] = 128
+            ..['revision'] = 2;
+          return http.Response(
+            jsonEncode({
+              'settlement_id': 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              'already_settled': false,
+              'elapsed_seconds': 600,
+              'credited_seconds': 600,
+              'capped': false,
+              'rooms_cleared': 8,
+              'bosses_cleared': 1,
+              'gold_earned': 128,
+              'state': state,
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         if (request.url.path.contains('/api/v1/game/rebirth/preview/')) {
           return http.Response(
             '{"user_id":"anon_test","revision":0,"can_rebirth":false,'
@@ -190,6 +212,26 @@ void main() {
     }
     expect(find.text('무료 첫 용사 · 마법사'), findsOneWidget);
   });
+
+  testWidgets('자동 전투 진입 시 서버 정산 결과와 현재 방을 표시한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('전투 화면 보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('idle-battle-runtime')), findsOneWidget);
+    expect(find.text('2층 · 3번 방'), findsOneWidget);
+    expect(find.byKey(const Key('battle-settlement-summary')), findsOneWidget);
+    expect(find.textContaining('방 8개'), findsOneWidget);
+    expect(find.textContaining('골드 +128'), findsOneWidget);
+  });
 }
 
 Map<String, dynamic> _selectedGameState() {
@@ -223,6 +265,15 @@ Map<String, dynamic> _selectedGameState() {
     'room_position': 1,
     'rooms_per_floor': 6,
     'gold': 0,
+    'battle': {
+      'status': 'RUNNING',
+      'server_anchor_at': '2026-08-14T00:10:00Z',
+      'offline_cap_seconds': 43200,
+      'party_power': 100,
+      'current_room_kind': 'NORMAL',
+      'room_progress_seconds': 15,
+      'room_required_seconds': 45,
+    },
     'health_essence': 0,
     'star_shards': 0,
     'transcendence_points': 0,

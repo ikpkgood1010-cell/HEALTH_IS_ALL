@@ -115,6 +115,8 @@ class GameProfileModel(Base):
     health_essence = Column(Integer, nullable=False, default=0)
     star_shards = Column(Integer, nullable=False, default=0)
     transcendence_points = Column(Integer, nullable=False, default=0)
+    battle_anchor_at = Column(DateTime, nullable=True)
+    battle_progress_seconds = Column(Float, nullable=False, default=0.0)
     revision = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, nullable=False, default=utc_now)
     updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
@@ -190,6 +192,29 @@ class GameRebirthLogModel(Base):
     reset_small_nodes = Column(Integer, nullable=False)
     reset_medium_nodes = Column(Integer, nullable=False)
     retained_snapshot_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
+
+class GameBattleSettlementModel(Base):
+    """Immutable idempotency and audit record for automatic battle settlement."""
+
+    __tablename__ = "game_battle_settlements"
+    __table_args__ = (
+        Index("ix_game_battle_settlements_user_created", "user_id", "created_at"),
+    )
+
+    settlement_id = Column(String(36), primary_key=True)
+    user_id = Column(
+        String(36),
+        ForeignKey("game_profiles.user_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    elapsed_seconds = Column(Integer, nullable=False)
+    credited_seconds = Column(Integer, nullable=False)
+    rooms_cleared = Column(Integer, nullable=False)
+    bosses_cleared = Column(Integer, nullable=False)
+    gold_earned = Column(Integer, nullable=False)
+    result_json = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=utc_now)
 
 

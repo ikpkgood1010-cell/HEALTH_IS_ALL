@@ -7,8 +7,8 @@
 | 익명 MVP | 완료 | `lib/anonymous_user_repository.dart`, `lib/main.dart` | 이전·복구 정책 뒤 로그인 |
 | 건강 하단 4탭 | 완료 | `lib/main_navigation_screen.dart` | 실기기 QA |
 | 홈 상단 게임 입장 | 완료 | `lib/home_screen.dart` | 최종 배너 에셋 연결 |
-| 게임 내부 허브 | 실제 상태 연결 | `lib/game_screen.dart`, `lib/api_data_provider.dart` | 전투 엔진 연결 |
-| 6인 직군·자동 전투 규칙 | 상태 저장 완료·전투 미구현 | `backend/idle_game_service.py`, `backend/database.py` | 시작 용사·전투 수식 확정 |
+| 게임 내부 허브 | 실제 상태 연결 | `lib/game_screen.dart`, `lib/api_data_provider.dart` | 콘텐츠별 실제 기능 확장 |
+| 6인 직군·자동 전투 규칙 | 서버시간·멱등 정산·Flutter 상태 완료(DB 미적용) | `backend/idle_battle_engine.py`, `backend/idle_game_service.py`, `lib/game_screen.dart` | 노드 비용 연결 후 30회 환생 경제 검증 |
 | 별자리 7계층·0계층 영입 노드 5개·1~6계층 전직 노드 6개 | 배경·토폴로지·상태 화면 완료 | `assets/images/game/constellation_board_base.png`, `lib/game_screen.dart`, `backend/idle_game_service.py` | 소형·중형 경로와 비용 구현 |
 | 정령 확정 부화 | 화면 기준 완료 | `lib/game_screen.dart` | 부화 진행·저장 구현 |
 | 스킬·아바타 확정 제작 | 화면 기준 완료 | `lib/game_screen.dart` | 제작식·재료 구현 |

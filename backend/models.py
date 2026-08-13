@@ -120,6 +120,16 @@ class ConstellationLayerStateResponse(BaseModel):
     nodes: List[ConstellationNodeStateResponse]
 
 
+class IdleBattleStateResponse(BaseModel):
+    status: Literal["WAITING_FOR_HERO", "RUNNING"]
+    server_anchor_at: Optional[str]
+    offline_cap_seconds: int
+    party_power: int
+    current_room_kind: Literal["NORMAL", "BOSS"]
+    room_progress_seconds: int
+    room_required_seconds: int
+
+
 class CanonicalGameStateResponse(BaseModel):
     initialized: bool
     phase: Literal["ONBOARDING", "IDLE_BATTLE"]
@@ -131,6 +141,7 @@ class CanonicalGameStateResponse(BaseModel):
     room_position: int
     rooms_per_floor: int
     gold: int
+    battle: IdleBattleStateResponse
     health_essence: int
     star_shards: int
     transcendence_points: int
@@ -140,6 +151,23 @@ class CanonicalGameStateResponse(BaseModel):
     constellation_layers: List[ConstellationLayerStateResponse]
     heroes: List[GameHeroStateResponse]
     node_counts: Dict[str, int]
+
+
+class IdleBattleSettleRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    idempotency_key: UUID4
+
+
+class IdleBattleSettleResponse(BaseModel):
+    settlement_id: str
+    already_settled: bool
+    elapsed_seconds: int
+    credited_seconds: int
+    capped: bool
+    rooms_cleared: int
+    bosses_cleared: int
+    gold_earned: int
+    state: CanonicalGameStateResponse
 
 
 class RebirthPreviewResponse(BaseModel):

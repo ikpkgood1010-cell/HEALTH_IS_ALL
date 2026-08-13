@@ -48,6 +48,8 @@ class ApiDataProvider extends ChangeNotifier {
   bool _isGuildLoading = false;
   String? _guildError;
   CanonicalGameState? _canonicalGame;
+  IdleBattleSettlement? _lastBattleSettlement;
+  String? _pendingBattleSettlementKey;
   RebirthPreview? _rebirthPreview;
   bool _isGameLoading = false;
   String? _gameError;
@@ -79,6 +81,7 @@ class ApiDataProvider extends ChangeNotifier {
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
   CanonicalGameState? get canonicalGame => _canonicalGame;
+  IdleBattleSettlement? get lastBattleSettlement => _lastBattleSettlement;
   RebirthPreview? get rebirthPreview => _rebirthPreview;
   bool get isGameLoading => _isGameLoading;
   String? get gameError => _gameError;
@@ -141,6 +144,35 @@ class ApiDataProvider extends ChangeNotifier {
       _rebirthPreview = await _api.fetchRebirthPreview(userId);
     } catch (_) {
       _gameError = '첫 용사를 선택하지 못했어요. 잠시 후 다시 시도해주세요.';
+    } finally {
+      _isGameLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Settles elapsed automatic-battle time using one retry-stable UUID.
+  Future<void> settleBattle() async {
+    final current = _canonicalGame;
+    if (current == null || !current.initialHeroSelected || _isGameLoading) {
+      return;
+    }
+    _isGameLoading = true;
+    _gameError = null;
+    _pendingBattleSettlementKey ??= newIdempotencyKey();
+    notifyListeners();
+    try {
+      final result = await _api.settleIdleBattle(
+        userId: userId,
+        idempotencyKey: _pendingBattleSettlementKey!,
+      );
+      _lastBattleSettlement = result;
+      _canonicalGame = result.state;
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+      _pendingBattleSettlementKey = null;
+    } catch (_) {
+      // Keep the key: if the server committed before a timeout, retrying must
+      // return that exact settlement instead of crediting the window twice.
+      _gameError = '자동 전투 정산을 불러오지 못했어요. 다시 열면 안전하게 재시도합니다.';
     } finally {
       _isGameLoading = false;
       notifyListeners();

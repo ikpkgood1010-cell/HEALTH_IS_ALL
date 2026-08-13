@@ -42,6 +42,8 @@ from backend.models import (
     HeroResponse,
     HeroRosterResponse,
     InitialHeroSelectionRequest,
+    IdleBattleSettleRequest,
+    IdleBattleSettleResponse,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
     RebirthExecuteRequest,
@@ -51,6 +53,8 @@ from backend.models import (
 )
 from backend.game_balance_engine import build_game_overview
 from backend.idle_game_service import (
+    BattleNotReadyError,
+    BattleSettlementConflictError,
     GameStateNotFoundError,
     InitialHeroSelectionConflictError,
     RebirthNotReadyError,
@@ -60,6 +64,7 @@ from backend.idle_game_service import (
     initialize_game_state,
     preview_rebirth,
     select_initial_hero,
+    settle_idle_battle,
 )
 from backend.adventure_service import (
     AdventureNotFoundError,
@@ -483,6 +488,40 @@ def get_canonical_game(
     except GameStateNotFoundError as exc:
         raise HTTPException(status_code=404, detail="game state is not initialized") from exc
     return CanonicalGameStateResponse(**state)
+
+
+@app.post(
+    "/api/v1/game/battle/settle",
+    response_model=IdleBattleSettleResponse,
+)
+def settle_canonical_idle_battle(
+    request: IdleBattleSettleRequest,
+    db: Session = Depends(get_db),
+) -> IdleBattleSettleResponse:
+    """Advance rolling auto-battle from server time with idempotent rewards."""
+    try:
+        result = settle_idle_battle(
+            db,
+            user_id=request.user_id,
+            settlement_id=request.idempotency_key,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except BattleNotReadyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except BattleSettlementConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return IdleBattleSettleResponse(
+        settlement_id=result.settlement_id,
+        already_settled=result.already_settled,
+        elapsed_seconds=result.elapsed_seconds,
+        credited_seconds=result.credited_seconds,
+        capped=result.capped,
+        rooms_cleared=result.rooms_cleared,
+        bosses_cleared=result.bosses_cleared,
+        gold_earned=result.gold_earned,
+        state=CanonicalGameStateResponse(**result.state),
+    )
 
 
 @app.get(

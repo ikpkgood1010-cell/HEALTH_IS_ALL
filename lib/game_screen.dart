@@ -230,12 +230,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildSection(ApiDataProvider data) {
     switch (_section) {
       case _GameSection.battle:
-        return _DetailList(
-          title: '완전 자동 탑 전투',
-          description:
-              '용사 6명이 앞으로 이동하며 방을 차례로 공략합니다. 수동 회피·강제 협동 없이 스킬도 자동으로 사용합니다.',
-          items: const ['1~5번 방: 일반 전투', '6번 방: 층 보스', '활성 스킬: 최대 6개 · 자동 사용'],
-        );
+        return _BattleDetail(data: data);
       case _GameSection.village:
         return const _DetailList(
           title: '마을과 길드',
@@ -280,7 +275,12 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _open(_GameSection section) => setState(() => _section = section);
+  void _open(_GameSection section) {
+    setState(() => _section = section);
+    if (section == _GameSection.battle) {
+      context.read<ApiDataProvider>().settleBattle();
+    }
+  }
 
   String _sectionTitle(_GameSection section) => switch (section) {
         _GameSection.battle => '자동 전투',
@@ -477,6 +477,123 @@ class _GameNotice extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _BattleDetail extends StatelessWidget {
+  final ApiDataProvider data;
+
+  const _BattleDetail({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = data.canonicalGame;
+    if (state == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!state.initialHeroSelected) {
+      return const _DetailList(
+        title: '자동 전투 준비 중',
+        description: '게임 허브에서 첫 용사 1명을 무료로 선택하면 서버 시간 기준 자동 전투가 시작됩니다.',
+        items: ['1~5번 방: 일반 전투', '6번 방: 층 보스', '첫 영입 전에는 시간과 보상이 쌓이지 않음'],
+      );
+    }
+
+    final battle = state.battle;
+    final progress = battle.roomRequiredSeconds <= 0
+        ? 0.0
+        : (battle.roomProgressSeconds / battle.roomRequiredSeconds)
+            .clamp(0.0, 1.0);
+    final last = data.lastBattleSettlement;
+    return ListView(
+      key: const Key('idle-battle-runtime'),
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text('완전 자동 탑 전투', style: AppTypography.displayLg),
+        const SizedBox(height: 8),
+        Text(
+          '앱을 닫아도 서버 시간을 기준으로 진행하며, 다시 열 때 한 번만 안전하게 정산합니다.',
+          style: AppTypography.bodyMd.copyWith(color: AppColors.neutral700),
+        ),
+        const SizedBox(height: 18),
+        Card(
+          color: const Color(0xFF263659),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${state.towerFloor}층 · ${state.roomPosition}번 방',
+                  key: const Key('battle-current-room'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  battle.currentRoomKind == 'BOSS' ? '층 보스 전투' : '일반 전투',
+                  style: const TextStyle(color: Color(0xFFFFD36E)),
+                ),
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 10,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${battle.roomProgressSeconds}초 / ${battle.roomRequiredSeconds}초 · 파티 전투력 ${battle.partyPower}',
+                  style: const TextStyle(color: Color(0xFFD8DEEF)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (last != null) ...[
+          const SizedBox(height: 12),
+          Card(
+            key: const Key('battle-settlement-summary'),
+            color: const Color(0xFFE9F7EF),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                '이번 정산 · 방 ${last.roomsCleared}개 · 보스 ${last.bossesCleared}회 · 골드 +${last.goldEarned}'
+                '${last.capped ? ' · 오프라인 상한 적용' : ''}',
+                style: AppTypography.bodyMd.copyWith(
+                  color: const Color(0xFF245C3F),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (data.gameError != null) ...[
+          const SizedBox(height: 12),
+          _GameNotice(message: data.gameError!),
+        ],
+        const SizedBox(height: 14),
+        FilledButton.icon(
+          key: const Key('battle-settle-button'),
+          onPressed: data.isGameLoading ? null : data.settleBattle,
+          icon: data.isGameLoading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sync_rounded),
+          label: Text(data.isGameLoading ? '정산 중' : '현재 진행 새로고침'),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          '현재 조정 후보: 오프라인 최대 ${battle.offlineCapSeconds ~/ 3600}시간 · 1~5번 일반방 · 6번 보스방. '
+          '골드와 전투 속도는 30회차 시뮬레이션 후 확정합니다.',
+          style: AppTypography.captionSm,
+        ),
+      ],
+    );
+  }
 }
 
 class _RunStatusCard extends StatelessWidget {

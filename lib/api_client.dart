@@ -125,6 +125,33 @@ class HealthIApiClient {
     );
   }
 
+  /// Credits rolling server elapsed time once. The UUID makes retries exact.
+  Future<IdleBattleSettlement> settleIdleBattle({
+    required String userId,
+    required String idempotencyKey,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/battle/settle');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'idempotency_key': idempotencyKey,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '자동 전투 정산 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return IdleBattleSettlement.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// Read-only preview; this never executes a rebirth.
   Future<RebirthPreview> fetchRebirthPreview(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/game/rebirth/preview/$userId');
@@ -282,6 +309,40 @@ class CanonicalGameHero {
   }
 }
 
+class IdleBattleState {
+  final String status;
+  final String? serverAnchorAt;
+  final int offlineCapSeconds;
+  final int partyPower;
+  final String currentRoomKind;
+  final int roomProgressSeconds;
+  final int roomRequiredSeconds;
+
+  const IdleBattleState({
+    required this.status,
+    required this.serverAnchorAt,
+    required this.offlineCapSeconds,
+    required this.partyPower,
+    required this.currentRoomKind,
+    required this.roomProgressSeconds,
+    required this.roomRequiredSeconds,
+  });
+
+  factory IdleBattleState.fromJson(Map<String, dynamic> json) =>
+      IdleBattleState(
+        status: json['status'] as String? ?? 'WAITING_FOR_HERO',
+        serverAnchorAt: json['server_anchor_at'] as String?,
+        offlineCapSeconds:
+            (json['offline_cap_seconds'] as num?)?.toInt() ?? 43200,
+        partyPower: (json['party_power'] as num?)?.toInt() ?? 0,
+        currentRoomKind: json['current_room_kind'] as String? ?? 'NORMAL',
+        roomProgressSeconds:
+            (json['room_progress_seconds'] as num?)?.toInt() ?? 0,
+        roomRequiredSeconds:
+            (json['room_required_seconds'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class ConstellationNodeState {
   final String nodeCode;
   final int layer;
@@ -347,6 +408,7 @@ class CanonicalGameState {
   final int roomPosition;
   final int roomsPerFloor;
   final int gold;
+  final IdleBattleState battle;
   final int healthEssence;
   final int starShards;
   final int transcendencePoints;
@@ -366,6 +428,7 @@ class CanonicalGameState {
     required this.roomPosition,
     required this.roomsPerFloor,
     required this.gold,
+    required this.battle,
     required this.healthEssence,
     required this.starShards,
     required this.transcendencePoints,
@@ -390,6 +453,9 @@ class CanonicalGameState {
       roomPosition: (json['room_position'] as num?)?.toInt() ?? 1,
       roomsPerFloor: (json['rooms_per_floor'] as num?)?.toInt() ?? 6,
       gold: (json['gold'] as num?)?.toInt() ?? 0,
+      battle: IdleBattleState.fromJson(
+        json['battle'] as Map<String, dynamic>? ?? const {},
+      ),
       healthEssence: (json['health_essence'] as num?)?.toInt() ?? 0,
       starShards: (json['star_shards'] as num?)?.toInt() ?? 0,
       transcendencePoints: (json['transcendence_points'] as num?)?.toInt() ?? 0,
@@ -412,6 +478,45 @@ class CanonicalGameState {
       ),
     );
   }
+}
+
+class IdleBattleSettlement {
+  final String settlementId;
+  final bool alreadySettled;
+  final int elapsedSeconds;
+  final int creditedSeconds;
+  final bool capped;
+  final int roomsCleared;
+  final int bossesCleared;
+  final int goldEarned;
+  final CanonicalGameState state;
+
+  const IdleBattleSettlement({
+    required this.settlementId,
+    required this.alreadySettled,
+    required this.elapsedSeconds,
+    required this.creditedSeconds,
+    required this.capped,
+    required this.roomsCleared,
+    required this.bossesCleared,
+    required this.goldEarned,
+    required this.state,
+  });
+
+  factory IdleBattleSettlement.fromJson(Map<String, dynamic> json) =>
+      IdleBattleSettlement(
+        settlementId: json['settlement_id'] as String? ?? '',
+        alreadySettled: json['already_settled'] as bool? ?? false,
+        elapsedSeconds: (json['elapsed_seconds'] as num?)?.toInt() ?? 0,
+        creditedSeconds: (json['credited_seconds'] as num?)?.toInt() ?? 0,
+        capped: json['capped'] as bool? ?? false,
+        roomsCleared: (json['rooms_cleared'] as num?)?.toInt() ?? 0,
+        bossesCleared: (json['bosses_cleared'] as num?)?.toInt() ?? 0,
+        goldEarned: (json['gold_earned'] as num?)?.toInt() ?? 0,
+        state: CanonicalGameState.fromJson(
+          json['state'] as Map<String, dynamic>? ?? const {},
+        ),
+      );
 }
 
 class RebirthPreview {

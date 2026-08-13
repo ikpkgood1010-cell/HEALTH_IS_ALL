@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
+from math import floor
 from uuid import UUID
 
 from sqlalchemy import func
@@ -11,10 +13,17 @@ from sqlalchemy.orm import Session
 
 from backend.config import utc_now
 from backend.database import (
+    GameBattleSettlementModel,
     GameConstellationNodeModel,
     GameHeroModel,
     GameProfileModel,
     GameRebirthLogModel,
+)
+from backend.idle_battle_engine import (
+    DEFAULT_TUNING,
+    advance_battle,
+    calculate_party_power,
+    room_required_seconds,
 )
 
 HERO_ROLES = (
@@ -45,11 +54,43 @@ class RebirthNotReadyError(RuntimeError):
     pass
 
 
+class BattleNotReadyError(RuntimeError):
+    pass
+
+
+class BattleSettlementConflictError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class RebirthResult:
     rebirth_id: str
     already_executed: bool
     state: dict
+
+
+@dataclass(frozen=True)
+class BattleSettlementResult:
+    settlement_id: str
+    already_settled: bool
+    elapsed_seconds: int
+    credited_seconds: int
+    capped: bool
+    rooms_cleared: int
+    bosses_cleared: int
+    gold_earned: int
+    state: dict
+
+
+def _replay_battle_settlement(
+    log: GameBattleSettlementModel,
+) -> BattleSettlementResult:
+    payload = json.loads(log.result_json)
+    return BattleSettlementResult(
+        settlement_id=log.settlement_id,
+        already_settled=True,
+        **payload,
+    )
 
 
 def initialize_game_state(db: Session, *, user_id: str) -> dict:
@@ -112,6 +153,8 @@ def select_initial_hero(
     ).one()
     hero.recruited = True
     hero.updated_at = utc_now()
+    profile.battle_anchor_at = utc_now()
+    profile.battle_progress_seconds = 0.0
     profile.revision += 1
     profile.updated_at = utc_now()
     db.commit()
@@ -133,6 +176,19 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
     ordered_heroes = [by_code[code] for code, _ in HERO_ROLES if code in by_code]
     node_counts = _node_counts(db, user_id=user_id)
     recruited_count = sum(1 for hero in ordered_heroes if hero.recruited)
+    recruited_tiers = [
+        hero.advancement_tier for hero in ordered_heroes if hero.recruited
+    ]
+    party_power = calculate_party_power(recruited_tiers)
+    current_room_required = (
+        room_required_seconds(
+            tower_floor=profile.tower_floor,
+            room_position=profile.room_position,
+            party_power=party_power,
+        )
+        if party_power > 0
+        else 0
+    )
     constellation_layers, starter_hero_code = _constellation_layers(
         db,
         user_id=user_id,
@@ -150,6 +206,21 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
         "room_position": profile.room_position,
         "rooms_per_floor": ROOMS_PER_FLOOR,
         "gold": profile.gold,
+        "battle": {
+            "status": "RUNNING" if recruited_count > 0 else "WAITING_FOR_HERO",
+            "server_anchor_at": (
+                f"{profile.battle_anchor_at.isoformat()}Z"
+                if profile.battle_anchor_at is not None
+                else None
+            ),
+            "offline_cap_seconds": DEFAULT_TUNING.offline_cap_seconds,
+            "party_power": party_power,
+            "current_room_kind": (
+                "BOSS" if profile.room_position == ROOMS_PER_FLOOR else "NORMAL"
+            ),
+            "room_progress_seconds": floor(profile.battle_progress_seconds or 0.0),
+            "room_required_seconds": current_room_required,
+        },
         "health_essence": profile.health_essence,
         "star_shards": profile.star_shards,
         "transcendence_points": profile.transcendence_points,
@@ -173,6 +244,108 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
         ],
         "node_counts": node_counts,
     }
+
+
+def settle_idle_battle(
+    db: Session,
+    *,
+    user_id: str,
+    settlement_id: UUID | str,
+    now: datetime | None = None,
+) -> BattleSettlementResult:
+    """Credit elapsed server time once and atomically advance the current run."""
+    stable_id = str(settlement_id)
+    existing = db.query(GameBattleSettlementModel).filter_by(
+        settlement_id=stable_id
+    ).first()
+    if existing is not None:
+        if existing.user_id != user_id:
+            raise BattleSettlementConflictError(
+                "battle settlement id belongs to another user"
+            )
+        return _replay_battle_settlement(existing)
+
+    profile = (
+        db.query(GameProfileModel)
+        .filter_by(user_id=user_id)
+        .with_for_update()
+        .first()
+    )
+    if profile is None:
+        raise GameStateNotFoundError(user_id)
+    # A concurrent retry may have committed while this transaction waited for
+    # the profile lock. Recheck before calculating or granting anything.
+    existing = db.query(GameBattleSettlementModel).filter_by(
+        settlement_id=stable_id
+    ).first()
+    if existing is not None:
+        if existing.user_id != user_id:
+            raise BattleSettlementConflictError(
+                "battle settlement id belongs to another user"
+            )
+        return _replay_battle_settlement(existing)
+    recruited = db.query(GameHeroModel).filter_by(
+        user_id=user_id,
+        recruited=True,
+    ).all()
+    if not recruited:
+        raise BattleNotReadyError("select the initial hero before settling battle")
+
+    settled_at = now or utc_now()
+    anchor = profile.battle_anchor_at or settled_at
+    elapsed = max(0, floor((settled_at - anchor).total_seconds()))
+    result = advance_battle(
+        tower_floor=profile.tower_floor,
+        room_position=profile.room_position,
+        carry_seconds=profile.battle_progress_seconds or 0.0,
+        elapsed_seconds=elapsed,
+        advancement_tiers=[hero.advancement_tier for hero in recruited],
+    )
+
+    profile.tower_floor = result.end_floor
+    profile.highest_floor = max(profile.highest_floor, result.end_floor)
+    profile.room_position = result.end_room
+    profile.gold += result.gold_earned
+    profile.battle_progress_seconds = result.carry_seconds
+    profile.battle_anchor_at = settled_at
+    if result.credited_seconds > 0:
+        profile.revision += 1
+    profile.updated_at = settled_at
+    db.flush()
+
+    state = get_game_state(db, user_id=user_id)
+    payload = {
+        "elapsed_seconds": elapsed,
+        "credited_seconds": result.credited_seconds,
+        "capped": elapsed > result.credited_seconds,
+        "rooms_cleared": result.rooms_cleared,
+        "bosses_cleared": result.bosses_cleared,
+        "gold_earned": result.gold_earned,
+        "state": state,
+    }
+    db.add(
+        GameBattleSettlementModel(
+            settlement_id=stable_id,
+            user_id=user_id,
+            elapsed_seconds=elapsed,
+            credited_seconds=result.credited_seconds,
+            rooms_cleared=result.rooms_cleared,
+            bosses_cleared=result.bosses_cleared,
+            gold_earned=result.gold_earned,
+            result_json=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            created_at=settled_at,
+        )
+    )
+    db.commit()
+    return BattleSettlementResult(
+        settlement_id=stable_id,
+        already_settled=False,
+        **payload,
+    )
 
 
 def preview_rebirth(db: Session, *, user_id: str) -> dict:
@@ -264,6 +437,8 @@ def execute_rebirth(
     profile.tower_floor = 1
     profile.room_position = 1
     profile.gold = 0
+    profile.battle_progress_seconds = 0.0
+    profile.battle_anchor_at = utc_now()
     profile.run_number = from_run + 1
     profile.revision += 1
     profile.updated_at = utc_now()

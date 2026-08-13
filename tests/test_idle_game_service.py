@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine
@@ -8,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from backend.database import (
     Base,
     GameConstellationNodeModel,
+    GameBattleSettlementModel,
     GameHeroModel,
     GameProfileModel,
     GameRebirthLogModel,
@@ -21,6 +23,7 @@ from backend.idle_game_service import (
     initialize_game_state,
     preview_rebirth,
     select_initial_hero,
+    settle_idle_battle,
 )
 
 
@@ -117,6 +120,47 @@ def test_initial_hero_is_free_exactly_once_and_uses_no_large_node(db_session):
             hero_code="HEALER",
             expected_revision=1,
         )
+
+
+def test_automatic_battle_uses_server_time_and_settles_once(db_session):
+    initialize_game_state(db_session, user_id="battle_user")
+    select_initial_hero(
+        db_session,
+        user_id="battle_user",
+        hero_code="TANKER",
+        expected_revision=0,
+    )
+    anchor = datetime(2026, 8, 14, 0, 0, 0)
+    profile = db_session.query(GameProfileModel).filter_by(user_id="battle_user").one()
+    profile.battle_anchor_at = anchor
+    db_session.commit()
+
+    settlement_id = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    first = settle_idle_battle(
+        db_session,
+        user_id="battle_user",
+        settlement_id=settlement_id,
+        now=anchor + timedelta(minutes=10),
+    )
+    assert first.already_settled is False
+    assert first.elapsed_seconds == 600
+    assert first.credited_seconds == 600
+    assert first.rooms_cleared > 0
+    assert first.bosses_cleared > 0
+    assert first.gold_earned > 0
+    assert first.state["tower_floor"] > 1
+    assert first.state["battle"]["party_power"] == 100
+
+    retry = settle_idle_battle(
+        db_session,
+        user_id="battle_user",
+        settlement_id=settlement_id,
+        now=anchor + timedelta(days=1),
+    )
+    assert retry.already_settled is True
+    assert retry.gold_earned == first.gold_earned
+    assert retry.state == first.state
+    assert db_session.query(GameBattleSettlementModel).count() == 1
 
 
 def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):

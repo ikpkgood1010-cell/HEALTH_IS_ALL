@@ -12,12 +12,17 @@
 - revision 확인과 idempotency key를 사용하는 환생 트랜잭션
 - 환생 감사 로그와 영구 보존 스냅샷
 - Flutter 게임 허브의 실제 서버 상태·환생 미리보기 연결
+- 서버 시간 기반 지속 자동전투와 UUID 멱등 정산
+- 1~5번 일반방·6번 보스방 진행 및 회차 골드 저장
+- Flutter 자동전투 실제 상태·정산 결과 화면
 
 ## API
 
 | 메서드 | 경로 | 쓰기 여부 | 역할 |
 |---|---|---:|---|
 | POST | `/api/v1/game/state/initialize` | 빈 상태 최초 1회 | 6개 고정 용사 슬롯과 1회차 생성 |
+| POST | `/api/v1/game/heroes/select-initial` | 있음 | 6직업 중 첫 용사 1명 무료 확정 영입 |
+| POST | `/api/v1/game/battle/settle` | 있음 | 서버 경과시간을 한 번만 방·층·골드로 정산 |
 | GET | `/api/v1/game/state/{user_id}` | 없음 | 현재 탑·회차·재화·용사·노드 조회 |
 | GET | `/api/v1/game/rebirth/preview/{user_id}` | 없음 | 환생 시 초기화/보존될 실제 수량 확인 |
 | POST | `/api/v1/game/rebirth/execute` | 있음 | 명시 확인·revision·멱등 키를 거친 환생 |
@@ -45,7 +50,8 @@ HTTP 409로 차단한다.
 
 ## DB migration
 
-파일: `migrations/202608130001_canonical_idle_game_state.sql`
+파일: `migrations/202608130001_canonical_idle_game_state.sql`,
+`migrations/202608140001_idle_battle_runtime.sql`
 
 추가 대상:
 
@@ -53,6 +59,7 @@ HTTP 409로 차단한다.
 - `game_heroes`
 - `game_constellation_nodes`
 - `game_rebirth_logs`
+- `game_battle_settlements`와 프로필의 전투 기준시각·현재 방 경과시간
 
 현재 Supabase에는 적용하지 않았다. 기존 migration runner의 generic apply는 계속
 차단돼 있으며 dry-run에서 baseline 뒤 두 번째 후보로만 표시된다. 실제 적용에는 다음이
@@ -68,12 +75,8 @@ HTTP 409로 차단한다.
 
 ## 아직 구현하지 않은 것
 
-- 첫 용사 선택/영입: 6직업 중 1명 무료 선택 API와 확인 화면 구현
-- 별자리 대형 노드: 0계층은 남은 5명 영입용 5개, 1~6계층은 전직용 각 6개
-- canonical state가 계층·직업별 `UNLOCKED / NEXT / LOCKED` 토폴로지를 제공
-- 승인된 정사각형 별자리 배경 위에 Flutter가 선택 계층의 노드만 동적으로 배치
 - 미확정: 0계층의 남은 용사 5명 영입 비용과 해금 순서
-- 자동 전투 시간·골드 획득 수식: 밸런스 시뮬레이션 전 운영 수치를 만들지 않음
+- 자동 전투 후보 수식: 격리 구현 및 30구간 비교 완료, 30회 환생 시뮬레이션 전 운영값 아님
 - 별자리 노드 비용과 해금 API: 층별 소형·중형 그래프 확정 후 구현
 - 실제 환생 버튼: DB 적용과 사용자 확인 UX 검증 후 노출
 - 스킬·아바타·정령 테이블: 해당 콘텐츠 세로 단면과 함께 추가

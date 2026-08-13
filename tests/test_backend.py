@@ -149,6 +149,24 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
 
     with testing_session() as db:
         profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
+        profile.battle_anchor_at = utc_now() - timedelta(minutes=10)
+        db.commit()
+
+    battle_payload = {
+        "user_id": user_id,
+        "idempotency_key": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    }
+    battle = client.post("/api/v1/game/battle/settle", json=battle_payload)
+    battle_retry = client.post("/api/v1/game/battle/settle", json=battle_payload)
+    assert battle.status_code == 200
+    assert battle.json()["rooms_cleared"] > 0
+    assert battle.json()["gold_earned"] > 0
+    assert battle.json()["state"]["battle"]["status"] == "RUNNING"
+    assert battle_retry.json()["already_settled"] is True
+    assert battle_retry.json()["gold_earned"] == battle.json()["gold_earned"]
+
+    with testing_session() as db:
+        profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
         profile.tower_floor = 9
         profile.room_position = 5
         profile.gold = 900
@@ -186,7 +204,7 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
 
     payload = {
         "user_id": user_id,
-        "expected_revision": 1,
+        "expected_revision": battle.json()["state"]["revision"],
         "idempotency_key": "44444444-4444-4444-8444-444444444444",
         "confirm": True,
     }
