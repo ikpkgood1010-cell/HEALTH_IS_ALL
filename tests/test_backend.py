@@ -106,10 +106,43 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
     assert initialized.status_code == 200
     assert initialized.json()["phase"] == "ONBOARDING"
     assert len(initialized.json()["heroes"]) == 6
+    assert initialized.json()["large_node_slots_by_layer"] == {
+        "0": 5,
+        "1": 6,
+        "2": 6,
+        "3": 6,
+        "4": 6,
+        "5": 6,
+        "6": 6,
+    }
     assert client.post(
         "/api/v1/game/state/initialize",
         json={"user_id": user_id},
     ).json() == initialized.json()
+
+    starter = client.post(
+        "/api/v1/game/heroes/select-initial",
+        json={
+            "user_id": user_id,
+            "hero_code": "TANKER",
+            "expected_revision": 0,
+        },
+    )
+    assert starter.status_code == 200
+    assert starter.json()["phase"] == "IDLE_BATTLE"
+    assert starter.json()["revision"] == 1
+    assert starter.json()["node_counts"]["LARGE"] == 0
+    assert sum(hero["recruited"] for hero in starter.json()["heroes"]) == 1
+
+    conflicting_starter = client.post(
+        "/api/v1/game/heroes/select-initial",
+        json={
+            "user_id": user_id,
+            "hero_code": "MAGE",
+            "expected_revision": 1,
+        },
+    )
+    assert conflicting_starter.status_code == 409
 
     with testing_session() as db:
         profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
@@ -150,7 +183,7 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
 
     payload = {
         "user_id": user_id,
-        "expected_revision": 0,
+        "expected_revision": 1,
         "idempotency_key": "44444444-4444-4444-8444-444444444444",
         "confirm": True,
     }

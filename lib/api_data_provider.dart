@@ -126,6 +126,27 @@ class ApiDataProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> selectInitialHero(String heroCode) async {
+    final current = _canonicalGame;
+    if (current == null || current.initialHeroSelected) return;
+    _isGameLoading = true;
+    _gameError = null;
+    notifyListeners();
+    try {
+      _canonicalGame = await _api.selectInitialHero(
+        userId: userId,
+        heroCode: heroCode,
+        expectedRevision: current.revision,
+      );
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+    } catch (_) {
+      _gameError = '첫 용사를 선택하지 못했어요. 잠시 후 다시 시도해주세요.';
+    } finally {
+      _isGameLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Loads the current adventure, persistent facility, and read-only recall.
   Future<void> refreshGuild() async {
     _isGuildLoading = true;

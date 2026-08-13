@@ -96,6 +96,35 @@ class HealthIApiClient {
     );
   }
 
+  /// Selects the one free starter. Retrying the same choice is idempotent.
+  Future<CanonicalGameState> selectInitialHero({
+    required String userId,
+    required String heroCode,
+    required int expectedRevision,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/heroes/select-initial');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'hero_code': heroCode,
+            'expected_revision': expectedRevision,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '첫 용사 선택 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return CanonicalGameState.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// Read-only preview; this never executes a rebirth.
   Future<RebirthPreview> fetchRebirthPreview(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/game/rebirth/preview/$userId');
@@ -265,6 +294,8 @@ class CanonicalGameState {
   final int healthEssence;
   final int starShards;
   final int transcendencePoints;
+  final bool initialHeroSelected;
+  final Map<String, int> largeNodeSlotsByLayer;
   final List<CanonicalGameHero> heroes;
   final Map<String, int> nodeCounts;
 
@@ -280,12 +311,16 @@ class CanonicalGameState {
     required this.healthEssence,
     required this.starShards,
     required this.transcendencePoints,
+    required this.initialHeroSelected,
+    required this.largeNodeSlotsByLayer,
     required this.heroes,
     required this.nodeCounts,
   });
 
   factory CanonicalGameState.fromJson(Map<String, dynamic> json) {
     final counts = json['node_counts'] as Map<String, dynamic>? ?? const {};
+    final nodeSlots =
+        json['large_node_slots_by_layer'] as Map<String, dynamic>? ?? const {};
     return CanonicalGameState(
       phase: json['phase'] as String? ?? 'ONBOARDING',
       revision: (json['revision'] as num?)?.toInt() ?? 0,
@@ -298,6 +333,10 @@ class CanonicalGameState {
       healthEssence: (json['health_essence'] as num?)?.toInt() ?? 0,
       starShards: (json['star_shards'] as num?)?.toInt() ?? 0,
       transcendencePoints: (json['transcendence_points'] as num?)?.toInt() ?? 0,
+      initialHeroSelected: json['initial_hero_selected'] as bool? ?? false,
+      largeNodeSlotsByLayer: nodeSlots.map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
       heroes: (json['heroes'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(CanonicalGameHero.fromJson)

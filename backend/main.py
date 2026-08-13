@@ -41,6 +41,7 @@ from backend.models import (
     HealthRecordResponse,
     HeroResponse,
     HeroRosterResponse,
+    InitialHeroSelectionRequest,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
     RebirthExecuteRequest,
@@ -51,12 +52,14 @@ from backend.models import (
 from backend.game_balance_engine import build_game_overview
 from backend.idle_game_service import (
     GameStateNotFoundError,
+    InitialHeroSelectionConflictError,
     RebirthNotReadyError,
     RebirthRevisionConflictError,
     execute_rebirth,
     get_game_state,
     initialize_game_state,
     preview_rebirth,
+    select_initial_hero,
 )
 from backend.adventure_service import (
     AdventureNotFoundError,
@@ -441,6 +444,29 @@ def initialize_canonical_game(
     return CanonicalGameStateResponse(
         **initialize_game_state(db, user_id=request.user_id)
     )
+
+
+@app.post(
+    "/api/v1/game/heroes/select-initial",
+    response_model=CanonicalGameStateResponse,
+)
+def select_canonical_initial_hero(
+    request: InitialHeroSelectionRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Select one free starter; the other five remain layer-0 recruit nodes."""
+    try:
+        state = select_initial_hero(
+            db,
+            user_id=request.user_id,
+            hero_code=request.hero_code,
+            expected_revision=request.expected_revision,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except InitialHeroSelectionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return CanonicalGameStateResponse(**state)
 
 
 @app.get(

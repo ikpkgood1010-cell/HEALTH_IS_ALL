@@ -88,6 +88,12 @@ class GameInitializeRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=36)
 
 
+class InitialHeroSelectionRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    hero_code: Literal["TANKER", "WARRIOR", "MAGE", "ARCHER", "ROGUE", "HEALER"]
+    expected_revision: int = Field(..., ge=0)
+
+
 class GameHeroStateResponse(BaseModel):
     hero_code: str
     role_name: str
@@ -111,6 +117,8 @@ class CanonicalGameStateResponse(BaseModel):
     health_essence: int
     star_shards: int
     transcendence_points: int
+    initial_hero_selected: bool
+    large_node_slots_by_layer: Dict[str, int]
     heroes: List[GameHeroStateResponse]
     node_counts: Dict[str, int]
 

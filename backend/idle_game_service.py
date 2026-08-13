@@ -33,6 +33,10 @@ class GameStateNotFoundError(LookupError):
     pass
 
 
+class InitialHeroSelectionConflictError(RuntimeError):
+    pass
+
+
 class RebirthRevisionConflictError(RuntimeError):
     pass
 
@@ -68,6 +72,52 @@ def initialize_game_state(db: Session, *, user_id: str) -> dict:
     return get_game_state(db, user_id=user_id)
 
 
+def select_initial_hero(
+    db: Session,
+    *,
+    user_id: str,
+    hero_code: str,
+    expected_revision: int,
+) -> dict:
+    """Recruit exactly one free starter without consuming a layer-0 node."""
+    normalized_code = hero_code.strip().upper()
+    valid_codes = {code for code, _ in HERO_ROLES}
+    if normalized_code not in valid_codes:
+        raise ValueError("unknown canonical hero code")
+
+    profile = (
+        db.query(GameProfileModel)
+        .filter_by(user_id=user_id)
+        .with_for_update()
+        .first()
+    )
+    if profile is None:
+        raise GameStateNotFoundError(user_id)
+
+    recruited = (
+        db.query(GameHeroModel)
+        .filter_by(user_id=user_id, recruited=True)
+        .all()
+    )
+    if recruited:
+        if len(recruited) == 1 and recruited[0].hero_code == normalized_code:
+            return get_game_state(db, user_id=user_id)
+        raise InitialHeroSelectionConflictError("initial hero is already selected")
+    if profile.revision != expected_revision:
+        raise InitialHeroSelectionConflictError("game state revision changed")
+
+    hero = db.query(GameHeroModel).filter_by(
+        user_id=user_id,
+        hero_code=normalized_code,
+    ).one()
+    hero.recruited = True
+    hero.updated_at = utc_now()
+    profile.revision += 1
+    profile.updated_at = utc_now()
+    db.commit()
+    return get_game_state(db, user_id=user_id)
+
+
 def get_game_state(db: Session, *, user_id: str) -> dict:
     profile = db.query(GameProfileModel).filter_by(user_id=user_id).first()
     if profile is None:
@@ -98,6 +148,11 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
         "health_essence": profile.health_essence,
         "star_shards": profile.star_shards,
         "transcendence_points": profile.transcendence_points,
+        "initial_hero_selected": recruited_count > 0,
+        "large_node_slots_by_layer": {
+            "0": 5,
+            **{str(layer): 6 for layer in range(1, 7)},
+        },
         "heroes": [
             {
                 "hero_code": hero.hero_code,

@@ -13,12 +13,14 @@ from backend.database import (
     GameRebirthLogModel,
 )
 from backend.idle_game_service import (
+    InitialHeroSelectionConflictError,
     RebirthNotReadyError,
     RebirthRevisionConflictError,
     execute_rebirth,
     get_game_state,
     initialize_game_state,
     preview_rebirth,
+    select_initial_hero,
 )
 
 
@@ -55,6 +57,50 @@ def test_initialization_creates_exactly_six_locked_roles_once(db_session):
     assert all(hero["recruited"] is False for hero in first["heroes"])
     assert db_session.query(GameProfileModel).count() == 1
     assert db_session.query(GameHeroModel).count() == 6
+    assert first["initial_hero_selected"] is False
+    assert first["large_node_slots_by_layer"] == {
+        "0": 5,
+        "1": 6,
+        "2": 6,
+        "3": 6,
+        "4": 6,
+        "5": 6,
+        "6": 6,
+    }
+
+
+def test_initial_hero_is_free_exactly_once_and_uses_no_large_node(db_session):
+    initialize_game_state(db_session, user_id="starter_user")
+
+    selected = select_initial_hero(
+        db_session,
+        user_id="starter_user",
+        hero_code="mage",
+        expected_revision=0,
+    )
+    assert selected["phase"] == "IDLE_BATTLE"
+    assert selected["revision"] == 1
+    assert selected["initial_hero_selected"] is True
+    assert selected["node_counts"]["LARGE"] == 0
+    assert [
+        hero["hero_code"] for hero in selected["heroes"] if hero["recruited"]
+    ] == ["MAGE"]
+
+    retry = select_initial_hero(
+        db_session,
+        user_id="starter_user",
+        hero_code="MAGE",
+        expected_revision=0,
+    )
+    assert retry == selected
+
+    with pytest.raises(InitialHeroSelectionConflictError):
+        select_initial_hero(
+            db_session,
+            user_id="starter_user",
+            hero_code="HEALER",
+            expected_revision=1,
+        )
 
 
 def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):

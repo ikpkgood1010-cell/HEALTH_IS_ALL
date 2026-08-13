@@ -30,12 +30,12 @@ class _GameScreenState extends State<GameScreen> {
   _GameSection _section = _GameSection.hub;
 
   static const _heroes = [
-    ('탱커', Icons.shield_rounded),
-    ('전사', Icons.sports_martial_arts_rounded),
-    ('마법사', Icons.auto_fix_high_rounded),
-    ('궁수', Icons.gps_fixed_rounded),
-    ('도적', Icons.bolt_rounded),
-    ('치유사', Icons.healing_rounded),
+    ('TANKER', '탱커', Icons.shield_rounded),
+    ('WARRIOR', '전사', Icons.sports_martial_arts_rounded),
+    ('MAGE', '마법사', Icons.auto_fix_high_rounded),
+    ('ARCHER', '궁수', Icons.gps_fixed_rounded),
+    ('ROGUE', '도적', Icons.bolt_rounded),
+    ('HEALER', '치유사', Icons.healing_rounded),
   ];
 
   @override
@@ -70,6 +70,8 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildHub(ApiDataProvider data) {
     final state = data.canonicalGame;
     final onboarding = state == null || state.phase == 'ONBOARDING';
+    final recruitedCount =
+        state?.heroes.where((hero) => hero.recruited).length ?? 0;
     return ListView(
       key: const Key('game-hub'),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -85,8 +87,8 @@ class _GameScreenState extends State<GameScreen> {
               ? '첫 용사 영입을 기다리고 있어요'
               : '탑 ${state.towerFloor}층 · ${state.roomPosition}번 방',
           message: onboarding
-              ? '0층 대형 노드에서 영입할 용사를 선택하면 자동 전투가 시작됩니다.'
-              : '6명의 용사가 다음 적을 향해 이동합니다.',
+              ? '6직업 중 첫 용사 1명을 무료로 선택하면 자동 전투가 시작됩니다.'
+              : '$recruitedCount명의 용사가 다음 적을 향해 이동합니다.',
         ),
         if (data.gameError != null) ...[
           const SizedBox(height: 10),
@@ -96,11 +98,21 @@ class _GameScreenState extends State<GameScreen> {
           const SizedBox(height: 10),
           _RunStatusCard(state: state),
         ],
+        if (state != null && !state.initialHeroSelected) ...[
+          const SizedBox(height: 14),
+          _InitialHeroSelector(
+            heroes: _heroes,
+            disabled: data.isGameLoading,
+            onSelected: data.selectInitialHero,
+          ),
+        ],
         const SizedBox(height: 18),
         Text('나의 6인 파티', style: AppTypography.titleMd),
         const SizedBox(height: 4),
         Text(
-          '각 용사는 0층 대형 노드에서 확정 영입합니다.',
+          onboarding
+              ? '첫 용사 1명은 무료 선택, 나머지 5명은 0계층 대형 노드에서 확정 영입합니다.'
+              : '남은 용사는 0계층 대형 노드 5개에서 확정 영입합니다.',
           style: AppTypography.captionSm,
         ),
         const SizedBox(height: 10),
@@ -181,12 +193,12 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildHeroSlot(
-    (String, IconData) hero,
+    (String, String, IconData) hero,
     CanonicalGameState? state,
   ) {
     CanonicalGameHero? saved;
     for (final item in state?.heroes ?? const <CanonicalGameHero>[]) {
-      if (item.roleName == hero.$1) {
+      if (item.heroCode == hero.$1) {
         saved = item;
         break;
       }
@@ -201,10 +213,10 @@ class _GameScreenState extends State<GameScreen> {
                 recruited ? const Color(0xFFFFE5A5) : AppColors.neutral200,
             foregroundColor:
                 recruited ? const Color(0xFF6A451F) : AppColors.neutral500,
-            child: Icon(recruited ? hero.$2 : Icons.lock_outline_rounded),
+            child: Icon(recruited ? hero.$3 : Icons.lock_outline_rounded),
           ),
           const SizedBox(height: 6),
-          Text(hero.$1, style: AppTypography.captionSm),
+          Text(hero.$2, style: AppTypography.captionSm),
           if ((saved?.advancementTier ?? 0) > 0)
             Text('전직 ${saved!.advancementTier}',
                 style: AppTypography.captionSm),
@@ -233,9 +245,9 @@ class _GameScreenState extends State<GameScreen> {
       case _GameSection.constellation:
         return const _DetailList(
           title: '360° 별자리 성장판',
-          description: '0층부터 6층까지, 각 층에 용사별 대형 노드 6개가 있습니다.',
+          description: '첫 용사 1명은 무료 선택하고, 0계층에서 나머지 5명을 영입합니다.',
           items: [
-            '0층 대형 노드: 용사별 확정 영입',
+            '0계층 대형 노드 5개: 나머지 용사 확정 영입',
             '1~6층 대형 노드: 용사별 개별 전직',
             '소형·중형 노드: 회차 성장, 환생 시 초기화',
             '대형 노드·전직·전직 외형: 영구 보존',
@@ -346,6 +358,91 @@ class _BattleBanner extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _InitialHeroSelector extends StatelessWidget {
+  final List<(String, String, IconData)> heroes;
+  final bool disabled;
+  final Future<void> Function(String heroCode) onSelected;
+
+  const _InitialHeroSelector({
+    required this.heroes,
+    required this.disabled,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        key: const Key('initial-hero-selector'),
+        color: const Color(0xFFFFF3D6),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('첫 용사 무료 선택', style: AppTypography.titleMd),
+              const SizedBox(height: 5),
+              Text(
+                '원하는 직업 1명을 무료로 영입합니다. 선택하지 않은 5명은 0계층 대형 노드에서 확정 영입할 수 있어요.',
+                style: AppTypography.captionSm,
+              ),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 1.08,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                children: [
+                  for (final hero in heroes)
+                    OutlinedButton(
+                      key: Key('initial-hero-${hero.$1}'),
+                      onPressed: disabled
+                          ? null
+                          : () => _confirmSelection(context, hero),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(hero.$3),
+                          const SizedBox(height: 5),
+                          Text(hero.$2),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Future<void> _confirmSelection(
+    BuildContext context,
+    (String, String, IconData) hero,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${hero.$2}를 첫 용사로 선택할까요?'),
+        content: const Text(
+          '첫 용사 선택은 영구 보존됩니다. 나머지 5명은 0계층 대형 노드에서 차례로 영입합니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('다시 고르기'),
+          ),
+          FilledButton(
+            key: const Key('confirm-initial-hero'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('무료 영입'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await onSelected(hero.$1);
   }
 }
 
@@ -489,7 +586,7 @@ class _DetailList extends StatelessWidget {
 }
 
 class _HeroDetail extends StatelessWidget {
-  final List<(String, IconData)> heroes;
+  final List<(String, String, IconData)> heroes;
 
   const _HeroDetail({required this.heroes});
 
@@ -499,14 +596,14 @@ class _HeroDetail extends StatelessWidget {
         children: [
           Text('용사 6인 전직', style: AppTypography.displayLg),
           const SizedBox(height: 8),
-          Text('각 용사는 별자리 대형 노드를 통해 확정 영입되고 개별 전직합니다.',
+          Text('첫 용사 1명은 무료 선택하고, 나머지는 0계층 대형 노드로 영입한 뒤 개별 전직합니다.',
               style: AppTypography.bodyMd),
           const SizedBox(height: 16),
           for (final hero in heroes)
             Card(
               child: ListTile(
-                leading: CircleAvatar(child: Icon(hero.$2)),
-                title: Text(hero.$1),
+                leading: CircleAvatar(child: Icon(hero.$3)),
+                title: Text(hero.$2),
                 subtitle: const Text('전직 단계와 전직 전용 장비 외형 영구 보존'),
               ),
             ),
