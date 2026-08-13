@@ -191,6 +191,7 @@ class GameRebirthLogModel(Base):
     previous_highest_floor = Column(Integer, nullable=False)
     reset_small_nodes = Column(Integer, nullable=False)
     reset_medium_nodes = Column(Integer, nullable=False)
+    star_shards_earned = Column(Integer, nullable=False, default=0)
     retained_snapshot_json = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=utc_now)
 

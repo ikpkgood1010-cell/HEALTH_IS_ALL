@@ -78,6 +78,30 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
+        if (request.url.path == '/api/v1/game/constellation/unlock') {
+          final state = _selectedGameState()
+            ..['revision'] = 2
+            ..['gold'] = 3500;
+          final branches = state['recruitment_branches'] as List<dynamic>;
+          final tanker = branches.first as Map<String, dynamic>;
+          tanker
+            ..['unlocked_nodes'] = 1
+            ..['small_unlocked'] = 1
+            ..['gold_spent'] = 1500
+            ..['next_node'] = {
+              'node_code': 'L0_TANKER_S02',
+              'node_size': 'SMALL',
+              'sequence': 2,
+              'gold_cost': 1730,
+              'title': '기초 단련 2',
+              'effect_label': '이번 회차 파티 전투력 +2%',
+            };
+          return http.Response(
+            jsonEncode(state),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         if (request.url.path.contains('/api/v1/game/rebirth/preview/')) {
           return http.Response(
             '{"user_id":"anon_test","revision":0,"can_rebirth":false,'
@@ -232,6 +256,37 @@ void main() {
     expect(find.textContaining('방 8개'), findsOneWidget);
     expect(find.textContaining('골드 +128'), findsOneWidget);
   });
+
+  testWidgets('0계층 회차 노드를 골드로 해금하고 진행도를 갱신한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('constellation-detail')),
+      const Offset(0, -850),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('recruitment-path-list')), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('unlock-run-node-TANKER')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unlock-run-node-TANKER')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('소형 1/6 · 중형 0/2 · 사용 1500 골드'), findsOneWidget);
+    expect(find.textContaining('기초 단련 2'), findsOneWidget);
+  });
 }
 
 Map<String, dynamic> _selectedGameState() {
@@ -264,12 +319,13 @@ Map<String, dynamic> _selectedGameState() {
     'highest_floor': 1,
     'room_position': 1,
     'rooms_per_floor': 6,
-    'gold': 0,
+    'gold': 5000,
     'battle': {
       'status': 'RUNNING',
       'server_anchor_at': '2026-08-14T00:10:00Z',
       'offline_cap_seconds': 43200,
       'party_power': 100,
+      'run_power_multiplier': 1.0,
       'current_room_kind': 'NORMAL',
       'room_progress_seconds': 15,
       'room_required_seconds': 45,
@@ -299,6 +355,32 @@ Map<String, dynamic> _selectedGameState() {
           'title': '$layer차 전직',
           'node_count': 6,
           'nodes': [for (final role in roles) node(role, layer)],
+        },
+    ],
+    'recruitment_branches': [
+      for (final role in roles.where((role) => role.$1 != 'MAGE'))
+        {
+          'hero_code': role.$1,
+          'role_name': role.$2,
+          'hero_recruited': false,
+          'layer': 0,
+          'unlocked_nodes': 0,
+          'total_nodes': 8,
+          'small_unlocked': 0,
+          'medium_unlocked': 0,
+          'gold_spent': 0,
+          'total_gold_cost': 33750,
+          'branch_complete': false,
+          'ready_to_recruit': false,
+          'next_node': {
+            'node_code': 'L0_${role.$1}_S01',
+            'node_size': 'SMALL',
+            'sequence': 1,
+            'gold_cost': 1500,
+            'title': '기초 단련 1',
+            'effect_label': '이번 회차 파티 전투력 +2%',
+          },
+          'recruit_node_code': 'L0_RECRUIT_${role.$1}',
         },
     ],
     'heroes': [

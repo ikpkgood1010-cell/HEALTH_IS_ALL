@@ -33,6 +33,7 @@ from backend.models import (
     AdventureResponse,
     AdventureSettleRequest,
     CanonicalGameStateResponse,
+    ConstellationUnlockRequest,
     GameDirectionResponse,
     GameInitializeRequest,
     GameOverviewResponse,
@@ -55,8 +56,11 @@ from backend.game_balance_engine import build_game_overview
 from backend.idle_game_service import (
     BattleNotReadyError,
     BattleSettlementConflictError,
+    ConstellationNodeNotReadyError,
+    ConstellationRevisionConflictError,
     GameStateNotFoundError,
     InitialHeroSelectionConflictError,
+    InsufficientGoldError,
     RebirthNotReadyError,
     RebirthRevisionConflictError,
     execute_rebirth,
@@ -65,6 +69,7 @@ from backend.idle_game_service import (
     preview_rebirth,
     select_initial_hero,
     settle_idle_battle,
+    unlock_constellation_node,
 )
 from backend.adventure_service import (
     AdventureNotFoundError,
@@ -522,6 +527,33 @@ def settle_canonical_idle_battle(
         gold_earned=result.gold_earned,
         state=CanonicalGameStateResponse(**result.state),
     )
+
+
+@app.post(
+    "/api/v1/game/constellation/unlock",
+    response_model=CanonicalGameStateResponse,
+)
+def unlock_canonical_constellation_node(
+    request: ConstellationUnlockRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Spend run gold on the next path node or recruit its completed hero."""
+    try:
+        state = unlock_constellation_node(
+            db,
+            user_id=request.user_id,
+            node_code=request.node_code,
+            expected_revision=request.expected_revision,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except ConstellationRevisionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ConstellationNodeNotReadyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientGoldError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return CanonicalGameStateResponse(**state)
 
 
 @app.get(

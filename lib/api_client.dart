@@ -152,6 +152,35 @@ class HealthIApiClient {
     );
   }
 
+  /// Unlocks exactly the next node. Revision checks prevent stale gold spend.
+  Future<CanonicalGameState> unlockConstellationNode({
+    required String userId,
+    required String nodeCode,
+    required int expectedRevision,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/game/constellation/unlock');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'node_code': nodeCode,
+            'expected_revision': expectedRevision,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '별자리 해금 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return CanonicalGameState.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// Read-only preview; this never executes a rebirth.
   Future<RebirthPreview> fetchRebirthPreview(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/game/rebirth/preview/$userId');
@@ -314,6 +343,7 @@ class IdleBattleState {
   final String? serverAnchorAt;
   final int offlineCapSeconds;
   final int partyPower;
+  final double runPowerMultiplier;
   final String currentRoomKind;
   final int roomProgressSeconds;
   final int roomRequiredSeconds;
@@ -323,6 +353,7 @@ class IdleBattleState {
     required this.serverAnchorAt,
     required this.offlineCapSeconds,
     required this.partyPower,
+    required this.runPowerMultiplier,
     required this.currentRoomKind,
     required this.roomProgressSeconds,
     required this.roomRequiredSeconds,
@@ -335,11 +366,94 @@ class IdleBattleState {
         offlineCapSeconds:
             (json['offline_cap_seconds'] as num?)?.toInt() ?? 43200,
         partyPower: (json['party_power'] as num?)?.toInt() ?? 0,
+        runPowerMultiplier:
+            (json['run_power_multiplier'] as num?)?.toDouble() ?? 1.0,
         currentRoomKind: json['current_room_kind'] as String? ?? 'NORMAL',
         roomProgressSeconds:
             (json['room_progress_seconds'] as num?)?.toInt() ?? 0,
         roomRequiredSeconds:
             (json['room_required_seconds'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class RunNodeCandidate {
+  final String nodeCode;
+  final String nodeSize;
+  final int sequence;
+  final int goldCost;
+  final String title;
+  final String effectLabel;
+
+  const RunNodeCandidate({
+    required this.nodeCode,
+    required this.nodeSize,
+    required this.sequence,
+    required this.goldCost,
+    required this.title,
+    required this.effectLabel,
+  });
+
+  factory RunNodeCandidate.fromJson(Map<String, dynamic> json) =>
+      RunNodeCandidate(
+        nodeCode: json['node_code'] as String? ?? '',
+        nodeSize: json['node_size'] as String? ?? 'SMALL',
+        sequence: (json['sequence'] as num?)?.toInt() ?? 0,
+        goldCost: (json['gold_cost'] as num?)?.toInt() ?? 0,
+        title: json['title'] as String? ?? '',
+        effectLabel: json['effect_label'] as String? ?? '',
+      );
+}
+
+class RecruitmentBranch {
+  final String heroCode;
+  final String roleName;
+  final bool heroRecruited;
+  final int unlockedNodes;
+  final int totalNodes;
+  final int smallUnlocked;
+  final int mediumUnlocked;
+  final int goldSpent;
+  final int totalGoldCost;
+  final bool branchComplete;
+  final bool readyToRecruit;
+  final RunNodeCandidate? nextNode;
+  final String recruitNodeCode;
+
+  const RecruitmentBranch({
+    required this.heroCode,
+    required this.roleName,
+    required this.heroRecruited,
+    required this.unlockedNodes,
+    required this.totalNodes,
+    required this.smallUnlocked,
+    required this.mediumUnlocked,
+    required this.goldSpent,
+    required this.totalGoldCost,
+    required this.branchComplete,
+    required this.readyToRecruit,
+    required this.nextNode,
+    required this.recruitNodeCode,
+  });
+
+  factory RecruitmentBranch.fromJson(Map<String, dynamic> json) =>
+      RecruitmentBranch(
+        heroCode: json['hero_code'] as String? ?? '',
+        roleName: json['role_name'] as String? ?? '',
+        heroRecruited: json['hero_recruited'] as bool? ?? false,
+        unlockedNodes: (json['unlocked_nodes'] as num?)?.toInt() ?? 0,
+        totalNodes: (json['total_nodes'] as num?)?.toInt() ?? 0,
+        smallUnlocked: (json['small_unlocked'] as num?)?.toInt() ?? 0,
+        mediumUnlocked: (json['medium_unlocked'] as num?)?.toInt() ?? 0,
+        goldSpent: (json['gold_spent'] as num?)?.toInt() ?? 0,
+        totalGoldCost: (json['total_gold_cost'] as num?)?.toInt() ?? 0,
+        branchComplete: json['branch_complete'] as bool? ?? false,
+        readyToRecruit: json['ready_to_recruit'] as bool? ?? false,
+        nextNode: json['next_node'] is Map<String, dynamic>
+            ? RunNodeCandidate.fromJson(
+                json['next_node'] as Map<String, dynamic>,
+              )
+            : null,
+        recruitNodeCode: json['recruit_node_code'] as String? ?? '',
       );
 }
 
@@ -416,6 +530,7 @@ class CanonicalGameState {
   final String? starterHeroCode;
   final Map<String, int> largeNodeSlotsByLayer;
   final List<ConstellationLayerState> constellationLayers;
+  final List<RecruitmentBranch> recruitmentBranches;
   final List<CanonicalGameHero> heroes;
   final Map<String, int> nodeCounts;
 
@@ -436,6 +551,7 @@ class CanonicalGameState {
     required this.starterHeroCode,
     required this.largeNodeSlotsByLayer,
     required this.constellationLayers,
+    required this.recruitmentBranches,
     required this.heroes,
     required this.nodeCounts,
   });
@@ -468,6 +584,11 @@ class CanonicalGameState {
           (json['constellation_layers'] as List<dynamic>? ?? const [])
               .whereType<Map<String, dynamic>>()
               .map(ConstellationLayerState.fromJson)
+              .toList(growable: false),
+      recruitmentBranches:
+          (json['recruitment_branches'] as List<dynamic>? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(RecruitmentBranch.fromJson)
               .toList(growable: false),
       heroes: (json['heroes'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -523,6 +644,8 @@ class RebirthPreview {
   final int revision;
   final bool canRebirth;
   final int nextRunNumber;
+  final int minimumFloor;
+  final int starShardsToEarn;
   final Map<String, int> reset;
   final Map<String, dynamic> retain;
 
@@ -530,6 +653,8 @@ class RebirthPreview {
     required this.revision,
     required this.canRebirth,
     required this.nextRunNumber,
+    required this.minimumFloor,
+    required this.starShardsToEarn,
     required this.reset,
     required this.retain,
   });
@@ -540,6 +665,8 @@ class RebirthPreview {
       revision: (json['revision'] as num?)?.toInt() ?? 0,
       canRebirth: json['can_rebirth'] as bool? ?? false,
       nextRunNumber: (json['next_run_number'] as num?)?.toInt() ?? 2,
+      minimumFloor: (json['minimum_floor'] as num?)?.toInt() ?? 100,
+      starShardsToEarn: (json['star_shards_to_earn'] as num?)?.toInt() ?? 0,
       reset: reset.map(
         (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
       ),

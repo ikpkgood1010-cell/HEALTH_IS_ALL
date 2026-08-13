@@ -167,7 +167,7 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
 
     with testing_session() as db:
         profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
-        profile.tower_floor = 9
+        profile.tower_floor = 109
         profile.room_position = 5
         profile.gold = 900
         hero = db.query(GameHeroModel).filter_by(
@@ -222,6 +222,55 @@ def test_canonical_game_state_and_rebirth_api(journey_runtime):
     retry = client.post("/api/v1/game/rebirth/execute", json=payload)
     assert retry.status_code == 200
     assert retry.json()["already_executed"] is True
+
+
+def test_layer_zero_unlock_api_spends_once_and_rejects_skipping(journey_runtime):
+    client, testing_session = journey_runtime
+    user_id = "constellation_api_user"
+    client.post("/api/v1/game/state/initialize", json={"user_id": user_id})
+    selected = client.post(
+        "/api/v1/game/heroes/select-initial",
+        json={
+            "user_id": user_id,
+            "hero_code": "MAGE",
+            "expected_revision": 0,
+        },
+    ).json()
+    with testing_session() as db:
+        profile = db.query(GameProfileModel).filter_by(user_id=user_id).one()
+        profile.gold = 10_000
+        db.commit()
+    state = client.get(f"/api/v1/game/state/{user_id}").json()
+    branch = next(
+        item for item in state["recruitment_branches"]
+        if item["hero_code"] == "TANKER"
+    )
+    payload = {
+        "user_id": user_id,
+        "node_code": branch["next_node"]["node_code"],
+        "expected_revision": selected["revision"],
+    }
+    unlocked = client.post(
+        "/api/v1/game/constellation/unlock",
+        json=payload,
+    )
+    assert unlocked.status_code == 200
+    assert unlocked.json()["gold"] == 8_500
+    assert unlocked.json()["node_counts"]["SMALL"] == 1
+
+    retry = client.post("/api/v1/game/constellation/unlock", json=payload)
+    assert retry.status_code == 200
+    assert retry.json()["gold"] == 8_500
+
+    skipped = client.post(
+        "/api/v1/game/constellation/unlock",
+        json={
+            "user_id": user_id,
+            "node_code": "L0_TANKER_S03",
+            "expected_revision": unlocked.json()["revision"],
+        },
+    )
+    assert skipped.status_code == 409
 
 
 def test_default_health_i_status(client):

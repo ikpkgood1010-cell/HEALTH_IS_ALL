@@ -240,7 +240,7 @@ class _GameScreenState extends State<GameScreen> {
       case _GameSection.heroes:
         return _HeroDetail(heroes: _heroes);
       case _GameSection.constellation:
-        return _ConstellationDetail(state: data.canonicalGame);
+        return _ConstellationDetail(data: data);
       case _GameSection.spirits:
         return const _DetailList(
           title: '정령 확정 부화',
@@ -722,9 +722,9 @@ class _HeroDetail extends StatelessWidget {
 }
 
 class _ConstellationDetail extends StatefulWidget {
-  final CanonicalGameState? state;
+  final ApiDataProvider data;
 
-  const _ConstellationDetail({required this.state});
+  const _ConstellationDetail({required this.data});
 
   @override
   State<_ConstellationDetail> createState() => _ConstellationDetailState();
@@ -735,7 +735,7 @@ class _ConstellationDetailState extends State<_ConstellationDetail> {
 
   @override
   Widget build(BuildContext context) {
-    final state = widget.state;
+    final state = widget.data.canonicalGame;
     final layers = state?.constellationLayers ?? const [];
     ConstellationLayerState? selected;
     for (final layer in layers) {
@@ -791,6 +791,18 @@ class _ConstellationDetailState extends State<_ConstellationDetail> {
           nodes: selected?.nodes ?? const [],
           starterSelected: state?.initialHeroSelected ?? false,
         ),
+        if (_selectedLayer == 0 && state != null) ...[
+          const SizedBox(height: 12),
+          _RecruitmentPathList(
+            state: state,
+            loading: widget.data.isGameLoading,
+            onUnlock: widget.data.unlockConstellationNode,
+          ),
+        ],
+        if (widget.data.gameError != null) ...[
+          const SizedBox(height: 12),
+          _GameNotice(message: widget.data.gameError!),
+        ],
         const SizedBox(height: 12),
         const _DetailRuleCard(),
       ],
@@ -992,11 +1004,146 @@ class _ConstellationLayerSummary extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 layer == 0
-                    ? '영입 비용은 밸런스 확정 후 활성화됩니다.'
+                    ? '아래 소형·중형 경로를 완성하면 해당 용사의 대형 영입 노드가 열립니다.'
                     : '전직 비용은 밸런스 확정 후 활성화됩니다.',
                 style: AppTypography.captionSm,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecruitmentPathList extends StatelessWidget {
+  final CanonicalGameState state;
+  final bool loading;
+  final Future<void> Function(String nodeCode) onUnlock;
+
+  const _RecruitmentPathList({
+    required this.state,
+    required this.loading,
+    required this.onUnlock,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        key: const Key('recruitment-path-list'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('0계층 회차 성장 경로', style: AppTypography.titleMd),
+          const SizedBox(height: 4),
+          Text(
+            '소형 3 → 중형 1 → 소형 3 → 중형 1. 골드와 경로 버프는 환생 시 초기화되지만 영입한 용사는 유지됩니다.',
+            style: AppTypography.captionSm,
+          ),
+          const SizedBox(height: 8),
+          for (final branch in state.recruitmentBranches)
+            _RecruitmentPathCard(
+              branch: branch,
+              gold: state.gold,
+              loading: loading,
+              onUnlock: onUnlock,
+            ),
+        ],
+      );
+}
+
+class _RecruitmentPathCard extends StatelessWidget {
+  final RecruitmentBranch branch;
+  final int gold;
+  final bool loading;
+  final Future<void> Function(String nodeCode) onUnlock;
+
+  const _RecruitmentPathCard({
+    required this.branch,
+    required this.gold,
+    required this.loading,
+    required this.onUnlock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final next = branch.nextNode;
+    final canAfford = next != null && gold >= next.goldCost;
+    return Card(
+      key: Key('recruitment-path-${branch.heroCode}'),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  child: Icon(_roleIcon(branch.heroCode)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(branch.roleName, style: AppTypography.titleMd),
+                      Text(
+                        branch.heroRecruited
+                            ? '영입 영구 보존 · 회차 단련'
+                            : '경로 완료 후 확정 영입',
+                        style: AppTypography.captionSm,
+                      ),
+                    ],
+                  ),
+                ),
+                Text('${branch.unlockedNodes}/${branch.totalNodes}'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: branch.totalNodes == 0
+                  ? 0
+                  : branch.unlockedNodes / branch.totalNodes,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '소형 ${branch.smallUnlocked}/6 · 중형 ${branch.mediumUnlocked}/2 · 사용 ${branch.goldSpent} 골드',
+              style: AppTypography.captionSm,
+            ),
+            const SizedBox(height: 10),
+            if (next != null)
+              FilledButton.tonalIcon(
+                key: Key('unlock-run-node-${branch.heroCode}'),
+                onPressed: loading || !canAfford
+                    ? null
+                    : () => onUnlock(next.nodeCode),
+                icon: Icon(
+                  next.nodeSize == 'SMALL'
+                      ? Icons.circle_outlined
+                      : Icons.auto_awesome_rounded,
+                ),
+                label: Text(
+                  canAfford
+                      ? '${next.title} · ${next.goldCost} 골드'
+                      : '${next.goldCost - gold} 골드 더 필요',
+                ),
+              )
+            else if (branch.readyToRecruit)
+              FilledButton.icon(
+                key: Key('recruit-hero-${branch.heroCode}'),
+                onPressed:
+                    loading ? null : () => onUnlock(branch.recruitNodeCode),
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: Text('${branch.roleName} 확정 영입'),
+              )
+            else
+              const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: AppColors.primary500),
+                  SizedBox(width: 7),
+                  Text('이번 회차 경로 완료'),
+                ],
+              ),
           ],
         ),
       ),
@@ -1096,8 +1243,8 @@ class _RebirthDetail extends StatelessWidget {
           message: preview == null
               ? '서버 미리보기를 불러오기 전입니다. 환생 실행 버튼은 제공하지 않습니다.'
               : preview!.canRebirth
-                  ? '다음 환생은 ${preview!.nextRunNumber}회차입니다. 아래 수량을 확인한 뒤에만 실행할 수 있습니다.'
-                  : '아직 초기화할 회차 진행이 없어 환생할 수 없습니다.',
+                  ? '${preview!.minimumFloor}층 조건 달성 · 다음은 ${preview!.nextRunNumber}회차 · 별 조각 +${preview!.starShardsToEarn}'
+                  : '${preview!.minimumFloor}층에 도달하면 자율 환생과 별 조각 보상이 열립니다.',
         ),
         const SizedBox(height: 12),
         _RuleCard(

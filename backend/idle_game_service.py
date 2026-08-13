@@ -12,6 +12,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.config import utc_now
+from backend.constellation_economy import (
+    REBIRTH_MINIMUM_FLOOR,
+    branch_total_gold,
+    layer_zero_branch,
+    next_branch_node,
+    rebirth_star_shards,
+    run_power_multiplier,
+)
 from backend.database import (
     GameBattleSettlementModel,
     GameConstellationNodeModel,
@@ -59,6 +67,18 @@ class BattleNotReadyError(RuntimeError):
 
 
 class BattleSettlementConflictError(RuntimeError):
+    pass
+
+
+class ConstellationRevisionConflictError(RuntimeError):
+    pass
+
+
+class ConstellationNodeNotReadyError(RuntimeError):
+    pass
+
+
+class InsufficientGoldError(RuntimeError):
     pass
 
 
@@ -179,7 +199,14 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
     recruited_tiers = [
         hero.advancement_tier for hero in ordered_heroes if hero.recruited
     ]
-    party_power = calculate_party_power(recruited_tiers)
+    power_multiplier = run_power_multiplier(
+        small_nodes=node_counts["SMALL"],
+        medium_nodes=node_counts["MEDIUM"],
+    )
+    party_power = calculate_party_power(
+        recruited_tiers,
+        run_power_multiplier=power_multiplier,
+    )
     current_room_required = (
         room_required_seconds(
             tower_floor=profile.tower_floor,
@@ -194,6 +221,18 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
         user_id=user_id,
         heroes=ordered_heroes,
     )
+    recruitment_branches = _recruitment_branches(
+        db,
+        user_id=user_id,
+        run_number=profile.run_number,
+        heroes=ordered_heroes,
+        starter_hero_code=starter_hero_code,
+    )
+    branch_by_hero = {branch["hero_code"]: branch for branch in recruitment_branches}
+    for node in constellation_layers[0]["nodes"]:
+        branch = branch_by_hero.get(node["hero_code"])
+        if branch is not None and branch["ready_to_recruit"] and node["state"] != "UNLOCKED":
+            node["state"] = "NEXT"
 
     return {
         "initialized": True,
@@ -215,6 +254,7 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
             ),
             "offline_cap_seconds": DEFAULT_TUNING.offline_cap_seconds,
             "party_power": party_power,
+            "run_power_multiplier": round(power_multiplier, 4),
             "current_room_kind": (
                 "BOSS" if profile.room_position == ROOMS_PER_FLOOR else "NORMAL"
             ),
@@ -231,6 +271,7 @@ def get_game_state(db: Session, *, user_id: str) -> dict:
             **{str(layer): 6 for layer in range(1, 7)},
         },
         "constellation_layers": constellation_layers,
+        "recruitment_branches": recruitment_branches,
         "heroes": [
             {
                 "hero_code": hero.hero_code,
@@ -294,12 +335,17 @@ def settle_idle_battle(
     settled_at = now or utc_now()
     anchor = profile.battle_anchor_at or settled_at
     elapsed = max(0, floor((settled_at - anchor).total_seconds()))
+    node_counts = _node_counts(db, user_id=user_id)
     result = advance_battle(
         tower_floor=profile.tower_floor,
         room_position=profile.room_position,
         carry_seconds=profile.battle_progress_seconds or 0.0,
         elapsed_seconds=elapsed,
         advancement_tiers=[hero.advancement_tier for hero in recruited],
+        run_power_multiplier=run_power_multiplier(
+            small_nodes=node_counts["SMALL"],
+            medium_nodes=node_counts["MEDIUM"],
+        ),
     )
 
     profile.tower_floor = result.end_floor
@@ -348,21 +394,109 @@ def settle_idle_battle(
     )
 
 
+def unlock_constellation_node(
+    db: Session,
+    *,
+    user_id: str,
+    node_code: str,
+    expected_revision: int,
+) -> dict:
+    """Unlock the next run node or recruit one completed layer-zero branch."""
+    normalized_code = node_code.strip().upper()
+    profile = (
+        db.query(GameProfileModel)
+        .filter_by(user_id=user_id)
+        .with_for_update()
+        .first()
+    )
+    if profile is None:
+        raise GameStateNotFoundError(user_id)
+
+    existing = db.query(GameConstellationNodeModel).filter_by(
+        user_id=user_id,
+        node_code=normalized_code,
+    ).first()
+    if existing is not None:
+        return get_game_state(db, user_id=user_id)
+    if profile.revision != expected_revision:
+        raise ConstellationRevisionConflictError("game state revision changed")
+
+    heroes = db.query(GameHeroModel).filter_by(user_id=user_id).all()
+    ordered = sorted(heroes, key=lambda hero: next(
+        index for index, (code, _) in enumerate(HERO_ROLES) if code == hero.hero_code
+    ))
+    _, starter_hero_code = _constellation_layers(db, user_id=user_id, heroes=ordered)
+    if starter_hero_code is None:
+        raise ConstellationNodeNotReadyError("select the initial hero first")
+    branches = _recruitment_branches(
+        db,
+        user_id=user_id,
+        run_number=profile.run_number,
+        heroes=ordered,
+        starter_hero_code=starter_hero_code,
+    )
+
+    for branch in branches:
+        next_node = branch["next_node"]
+        recruit_code = f"L0_RECRUIT_{branch['hero_code']}"
+        if next_node is not None and normalized_code == next_node["node_code"]:
+            cost = next_node["gold_cost"]
+            if profile.gold < cost:
+                raise InsufficientGoldError(f"requires {cost} gold")
+            profile.gold -= cost
+            db.add(
+                GameConstellationNodeModel(
+                    user_id=user_id,
+                    node_code=normalized_code,
+                    layer=0,
+                    node_size=next_node["node_size"],
+                    hero_code=branch["hero_code"],
+                    unlocked_run_number=profile.run_number,
+                    unlocked_at=utc_now(),
+                )
+            )
+            profile.revision += 1
+            profile.updated_at = utc_now()
+            db.commit()
+            return get_game_state(db, user_id=user_id)
+        if next_node is None and normalized_code == recruit_code:
+            hero = next(item for item in heroes if item.hero_code == branch["hero_code"])
+            if hero.recruited:
+                return get_game_state(db, user_id=user_id)
+            hero.recruited = True
+            hero.updated_at = utc_now()
+            db.add(
+                GameConstellationNodeModel(
+                    user_id=user_id,
+                    node_code=recruit_code,
+                    layer=0,
+                    node_size="LARGE",
+                    hero_code=branch["hero_code"],
+                    unlocked_run_number=profile.run_number,
+                    unlocked_at=utc_now(),
+                )
+            )
+            profile.revision += 1
+            profile.updated_at = utc_now()
+            db.commit()
+            return get_game_state(db, user_id=user_id)
+
+    raise ConstellationNodeNotReadyError("node is not the next unlockable node")
+
+
 def preview_rebirth(db: Session, *, user_id: str) -> dict:
     state = get_game_state(db, user_id=user_id)
     small = state["node_counts"]["SMALL"]
     medium = state["node_counts"]["MEDIUM"]
-    can_rebirth = (
-        state["tower_floor"] > 1
-        or state["gold"] > 0
-        or small > 0
-        or medium > 0
-    )
+    shard_reward = rebirth_star_shards(state["tower_floor"])
+    can_rebirth = state["tower_floor"] >= REBIRTH_MINIMUM_FLOOR
     return {
         "user_id": user_id,
         "revision": state["revision"],
         "can_rebirth": can_rebirth,
         "next_run_number": state["run_number"] + 1,
+        "minimum_floor": REBIRTH_MINIMUM_FLOOR,
+        "star_shards_to_earn": shard_reward,
         "reset": {
             "tower_floor": state["tower_floor"],
             "room_position": state["room_position"],
@@ -423,7 +557,9 @@ def execute_rebirth(
 
     preview = preview_rebirth(db, user_id=user_id)
     if not preview["can_rebirth"]:
-        raise RebirthNotReadyError("run has no progress to reset")
+        raise RebirthNotReadyError(
+            f"reach floor {REBIRTH_MINIMUM_FLOOR} before rebirth"
+        )
 
     previous_floor = max(profile.highest_floor, profile.tower_floor)
     snapshot = json.dumps(preview["retain"], ensure_ascii=False, separators=(",", ":"))
@@ -437,6 +573,7 @@ def execute_rebirth(
     profile.tower_floor = 1
     profile.room_position = 1
     profile.gold = 0
+    profile.star_shards += preview["star_shards_to_earn"]
     profile.battle_progress_seconds = 0.0
     profile.battle_anchor_at = utc_now()
     profile.run_number = from_run + 1
@@ -451,6 +588,7 @@ def execute_rebirth(
             previous_highest_floor=previous_floor,
             reset_small_nodes=preview["reset"]["small_nodes"],
             reset_medium_nodes=preview["reset"]["medium_nodes"],
+            star_shards_earned=preview["star_shards_to_earn"],
             retained_snapshot_json=snapshot,
         )
     )
@@ -490,6 +628,65 @@ def _node_counts(db: Session, *, user_id: str) -> dict[str, int]:
     values = {size: 0 for size in ("SMALL", "MEDIUM", "LARGE")}
     values.update({str(size): int(count) for size, count in rows})
     return values
+
+
+def _recruitment_branches(
+    db: Session,
+    *,
+    user_id: str,
+    run_number: int,
+    heroes: list[GameHeroModel],
+    starter_hero_code: str | None,
+) -> list[dict]:
+    if starter_hero_code is None:
+        return []
+    unlocked_codes = {
+        code
+        for (code,) in db.query(GameConstellationNodeModel.node_code)
+        .filter(
+            GameConstellationNodeModel.user_id == user_id,
+            GameConstellationNodeModel.unlocked_run_number == run_number,
+            GameConstellationNodeModel.node_size.in_(RUN_NODE_SIZES),
+        )
+        .all()
+    }
+    result = []
+    for hero in heroes:
+        if hero.hero_code == starter_hero_code:
+            continue
+        branch = layer_zero_branch(hero.hero_code)
+        unlocked = [node for node in branch if node.node_code in unlocked_codes]
+        next_node = next_branch_node(hero.hero_code, unlocked_codes)
+        result.append(
+            {
+                "hero_code": hero.hero_code,
+                "role_name": hero.role_name,
+                "hero_recruited": hero.recruited,
+                "layer": 0,
+                "unlocked_nodes": len(unlocked),
+                "total_nodes": len(branch),
+                "small_unlocked": sum(node.node_size == "SMALL" for node in unlocked),
+                "medium_unlocked": sum(node.node_size == "MEDIUM" for node in unlocked),
+                "gold_spent": sum(node.gold_cost for node in unlocked),
+                "total_gold_cost": branch_total_gold(hero.hero_code),
+                "branch_complete": next_node is None,
+                "ready_to_recruit": next_node is None and not hero.recruited,
+                "next_node": (
+                    {
+                        "node_code": next_node.node_code,
+                        "node_size": next_node.node_size,
+                        "sequence": next_node.sequence,
+                        "gold_cost": next_node.gold_cost,
+                        "title": next_node.title,
+                        "effect_label": next_node.effect_label,
+                    }
+                    if next_node is not None
+                    else None
+                ),
+                "recruit_node_code": f"L0_RECRUIT_{hero.hero_code}",
+            }
+        )
+    return result
 
 
 def _constellation_layers(

@@ -5,6 +5,10 @@ ALTER TABLE game_profiles
     ADD COLUMN battle_progress_seconds DOUBLE PRECISION NOT NULL DEFAULT 0
         CHECK (battle_progress_seconds >= 0);
 
+ALTER TABLE game_rebirth_logs
+    ADD COLUMN star_shards_earned INTEGER NOT NULL DEFAULT 0
+        CHECK (star_shards_earned >= 0);
+
 CREATE TABLE game_battle_settlements (
     settlement_id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,

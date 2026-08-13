@@ -23,6 +23,7 @@
 | POST | `/api/v1/game/state/initialize` | 빈 상태 최초 1회 | 6개 고정 용사 슬롯과 1회차 생성 |
 | POST | `/api/v1/game/heroes/select-initial` | 있음 | 6직업 중 첫 용사 1명 무료 확정 영입 |
 | POST | `/api/v1/game/battle/settle` | 있음 | 서버 경과시간을 한 번만 방·층·골드로 정산 |
+| POST | `/api/v1/game/constellation/unlock` | 있음 | 다음 소형·중형 노드 해금 또는 경로 완료 용사 확정 영입 |
 | GET | `/api/v1/game/state/{user_id}` | 없음 | 현재 탑·회차·재화·용사·노드 조회 |
 | GET | `/api/v1/game/rebirth/preview/{user_id}` | 없음 | 환생 시 초기화/보존될 실제 수량 확인 |
 | POST | `/api/v1/game/rebirth/execute` | 있음 | 명시 확인·revision·멱등 키를 거친 환생 |
@@ -62,7 +63,7 @@ HTTP 409로 차단한다.
 - `game_battle_settlements`와 프로필의 전투 기준시각·현재 방 경과시간
 
 현재 Supabase에는 적용하지 않았다. 기존 migration runner의 generic apply는 계속
-차단돼 있으며 dry-run에서 baseline 뒤 두 번째 후보로만 표시된다. 실제 적용에는 다음이
+차단돼 있으며 dry-run에서 baseline 뒤 후속 후보로만 표시된다. 실제 적용에는 다음이
 모두 필요하다.
 
 1. PR 병합과 Render 배포 순서 승인
@@ -75,8 +76,8 @@ HTTP 409로 차단한다.
 
 ## 아직 구현하지 않은 것
 
-- 미확정: 0계층의 남은 용사 5명 영입 비용과 해금 순서
-- 자동 전투 후보 수식: 격리 구현 및 30구간 비교 완료, 30회 환생 시뮬레이션 전 운영값 아님
-- 별자리 노드 비용과 해금 API: 층별 소형·중형 그래프 확정 후 구현
+- 0계층: 용사별 소형 6·중형 2 경로와 5개 확정 영입 노드 구현, 비용은 후보값
+- 자동 전투·0계층 경제: 30회 환생 시뮬레이션 완료, 전직 경제 연결 후 재검증 필요
+- 1~6계층 별자리 노드 비용과 해금 API: 전직·건강 정수·별 조각 소비처와 함께 구현
 - 실제 환생 버튼: DB 적용과 사용자 확인 UX 검증 후 노출
 - 스킬·아바타·정령 테이블: 해당 콘텐츠 세로 단면과 함께 추가

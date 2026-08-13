@@ -125,9 +125,36 @@ class IdleBattleStateResponse(BaseModel):
     server_anchor_at: Optional[str]
     offline_cap_seconds: int
     party_power: int
+    run_power_multiplier: float
     current_room_kind: Literal["NORMAL", "BOSS"]
     room_progress_seconds: int
     room_required_seconds: int
+
+
+class RunNodeCandidateResponse(BaseModel):
+    node_code: str
+    node_size: Literal["SMALL", "MEDIUM"]
+    sequence: int
+    gold_cost: int
+    title: str
+    effect_label: str
+
+
+class RecruitmentBranchResponse(BaseModel):
+    hero_code: str
+    role_name: str
+    hero_recruited: bool
+    layer: Literal[0]
+    unlocked_nodes: int
+    total_nodes: int
+    small_unlocked: int
+    medium_unlocked: int
+    gold_spent: int
+    total_gold_cost: int
+    branch_complete: bool
+    ready_to_recruit: bool
+    next_node: Optional[RunNodeCandidateResponse]
+    recruit_node_code: str
 
 
 class CanonicalGameStateResponse(BaseModel):
@@ -149,6 +176,7 @@ class CanonicalGameStateResponse(BaseModel):
     starter_hero_code: Optional[str]
     large_node_slots_by_layer: Dict[str, int]
     constellation_layers: List[ConstellationLayerStateResponse]
+    recruitment_branches: List[RecruitmentBranchResponse]
     heroes: List[GameHeroStateResponse]
     node_counts: Dict[str, int]
 
@@ -170,11 +198,19 @@ class IdleBattleSettleResponse(BaseModel):
     state: CanonicalGameStateResponse
 
 
+class ConstellationUnlockRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    node_code: str = Field(..., min_length=1, max_length=80)
+    expected_revision: int = Field(..., ge=0)
+
+
 class RebirthPreviewResponse(BaseModel):
     user_id: str
     revision: int
     can_rebirth: bool
     next_run_number: int
+    minimum_floor: int
+    star_shards_to_earn: int
     reset: Dict[str, int]
     retain: Dict[str, Any]
 

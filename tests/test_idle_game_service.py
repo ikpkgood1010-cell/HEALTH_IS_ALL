@@ -24,6 +24,7 @@ from backend.idle_game_service import (
     preview_rebirth,
     select_initial_hero,
     settle_idle_battle,
+    unlock_constellation_node,
 )
 
 
@@ -163,10 +164,67 @@ def test_automatic_battle_uses_server_time_and_settles_once(db_session):
     assert db_session.query(GameBattleSettlementModel).count() == 1
 
 
+def test_layer_zero_branch_spends_gold_in_order_then_recruits_permanently(db_session):
+    initialize_game_state(db_session, user_id="node_user")
+    state = select_initial_hero(
+        db_session,
+        user_id="node_user",
+        hero_code="TANKER",
+        expected_revision=0,
+    )
+    profile = db_session.query(GameProfileModel).filter_by(user_id="node_user").one()
+    profile.gold = 100_000
+    db_session.commit()
+    state = get_game_state(db_session, user_id="node_user")
+    warrior_branch = next(
+        branch for branch in state["recruitment_branches"]
+        if branch["hero_code"] == "WARRIOR"
+    )
+    spent = 0
+    for _ in range(warrior_branch["total_nodes"]):
+        next_node = next(
+            branch for branch in state["recruitment_branches"]
+            if branch["hero_code"] == "WARRIOR"
+        )["next_node"]
+        spent += next_node["gold_cost"]
+        state = unlock_constellation_node(
+            db_session,
+            user_id="node_user",
+            node_code=next_node["node_code"],
+            expected_revision=state["revision"],
+        )
+    ready = next(
+        branch for branch in state["recruitment_branches"]
+        if branch["hero_code"] == "WARRIOR"
+    )
+    assert ready["ready_to_recruit"] is True
+    assert state["gold"] == 100_000 - spent
+    assert state["node_counts"] == {"SMALL": 6, "MEDIUM": 2, "LARGE": 0}
+    assert state["battle"]["run_power_multiplier"] == 1.22
+
+    recruited = unlock_constellation_node(
+        db_session,
+        user_id="node_user",
+        node_code=ready["recruit_node_code"],
+        expected_revision=state["revision"],
+    )
+    warrior = next(
+        hero for hero in recruited["heroes"] if hero["hero_code"] == "WARRIOR"
+    )
+    assert warrior["recruited"] is True
+    assert recruited["node_counts"]["LARGE"] == 1
+    recruited_branch = next(
+        branch for branch in recruited["recruitment_branches"]
+        if branch["hero_code"] == "WARRIOR"
+    )
+    assert recruited_branch["hero_recruited"] is True
+    assert recruited_branch["branch_complete"] is True
+
+
 def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):
     initialize_game_state(db_session, user_id="rebirth_user")
     profile = db_session.query(GameProfileModel).filter_by(user_id="rebirth_user").one()
-    profile.tower_floor = 18
+    profile.tower_floor = 118
     profile.highest_floor = 16
     profile.room_position = 4
     profile.gold = 3200
@@ -209,6 +267,8 @@ def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):
 
     preview = preview_rebirth(db_session, user_id="rebirth_user")
     assert preview["can_rebirth"] is True
+    assert preview["minimum_floor"] == 100
+    assert preview["star_shards_to_earn"] == 1
     assert preview["reset"]["small_nodes"] == 1
     assert preview["reset"]["medium_nodes"] == 1
     assert preview["retain"]["large_nodes"] == 1
@@ -223,12 +283,12 @@ def test_rebirth_resets_only_run_state_and_is_idempotent(db_session):
     )
     assert result.already_executed is False
     assert result.state["tower_floor"] == 1
-    assert result.state["highest_floor"] == 18
+    assert result.state["highest_floor"] == 118
     assert result.state["room_position"] == 1
     assert result.state["gold"] == 0
     assert result.state["run_number"] == 2
     assert result.state["health_essence"] == 41
-    assert result.state["star_shards"] == 7
+    assert result.state["star_shards"] == 8
     assert result.state["transcendence_points"] == 2
     assert result.state["node_counts"] == {"SMALL": 0, "MEDIUM": 0, "LARGE": 1}
     retained_warrior = next(

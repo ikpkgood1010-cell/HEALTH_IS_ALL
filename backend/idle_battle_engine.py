@@ -53,6 +53,7 @@ class BattleAdvance:
 def calculate_party_power(
     advancement_tiers: list[int] | tuple[int, ...],
     *,
+    run_power_multiplier: float = 1.0,
     tuning: BattleTuning = DEFAULT_TUNING,
 ) -> int:
     """Return power from recruited heroes only; an empty party cannot battle."""
@@ -60,7 +61,7 @@ def calculate_party_power(
         tuning.base_hero_power * (1 + max(0, tier) * tuning.advancement_power_per_tier)
         for tier in advancement_tiers
     )
-    return max(0, floor(total))
+    return max(0, floor(total * max(1.0, run_power_multiplier)))
 
 
 def room_required_seconds(
@@ -111,6 +112,7 @@ def advance_battle(
     carry_seconds: float,
     elapsed_seconds: int,
     advancement_tiers: list[int] | tuple[int, ...],
+    run_power_multiplier: float = 1.0,
     tuning: BattleTuning = DEFAULT_TUNING,
 ) -> BattleAdvance:
     """Advance one run deterministically using credited server elapsed time."""
@@ -121,7 +123,11 @@ def advance_battle(
     credited = max(0, min(int(elapsed_seconds), tuning.offline_cap_seconds))
     available = max(0.0, carry_seconds) + credited
     initial_available = available
-    party_power = calculate_party_power(advancement_tiers, tuning=tuning)
+    party_power = calculate_party_power(
+        advancement_tiers,
+        run_power_multiplier=run_power_multiplier,
+        tuning=tuning,
+    )
     if party_power <= 0:
         raise ValueError("at least one recruited hero is required")
 
