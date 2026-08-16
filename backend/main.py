@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import json
+import re
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -23,6 +25,7 @@ from backend.database import (
 )
 from backend.health_calculator import DynamicHealthCalculator
 from backend.health_essence_service import award_health_essence
+from backend.health_text_analysis import analyze_meal_text, analyze_workout_text, daily_review
 from backend.data_idempotency_engine import (
     DUPLICATE_RECORD_MESSAGE,
     canonical_detail_json,
@@ -42,6 +45,9 @@ from backend.models import (
     HealthIStateResponse,
     HealthRecordRequest,
     HealthRecordResponse,
+    HealthTextAnalysisRequest,
+    HealthTextAnalysisResponse,
+    DailyHealthReviewResponse,
     HeroResponse,
     HeroRosterResponse,
     InitialHeroSelectionRequest,
@@ -117,6 +123,95 @@ app.add_middleware(
 progression_engine = ProgressionEngine()
 health_calc = DynamicHealthCalculator()
 ai_agent = HealthIAgentService()
+
+
+def _today_start():
+    now = utc_now()
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _latest_meal_detail(db: Session, *, user_id: str, meal_type: str) -> dict | None:
+    records = (
+        db.query(ActivityLogModel)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.record_type == "meal_log",
+            ActivityLogModel.logged_at >= _today_start(),
+        )
+        .order_by(ActivityLogModel.logged_at.desc())
+        .all()
+    )
+    for record in records:
+        try:
+            detail = json.loads(record.detail_json) if record.detail_json else {}
+        except (TypeError, ValueError):
+            continue
+        if detail.get("meal_type") == meal_type and detail.get("analysis_version") == "meal_text_v1":
+            # Recreate the rich shape expected by the analyzer from the compact stored shape.
+            items = []
+            for item in detail.get("items", []):
+                nutrients = {}
+                items.append({
+                    "code": item.get("name"), "name": item.get("name"), "grams": item.get("grams"),
+                    "range_g": [item.get("grams"), item.get("grams")], "basis": "이전 확정 식사",
+                    "source": "이전 확정 식사", "groups": [], "nutrients": nutrients,
+                    "nutrients_low": nutrients, "nutrients_high": nutrients,
+                })
+            return {
+                **detail, "items": items, "confirmation_cards": [],
+                "summary": f"오늘 {meal_type} 기록과 같은 구성", "sources": ["이전 확정 식사"],
+            }
+    return None
+
+
+@app.post("/api/v1/health/text/analyze", response_model=HealthTextAnalysisResponse)
+def analyze_health_text(
+    req: HealthTextAnalysisRequest,
+    db: Session = Depends(get_db),
+) -> HealthTextAnalysisResponse:
+    if req.record_type == "meal_log":
+        meal_type = req.meal_type or "간식"
+        reference = None
+        reference_match = re.search(r"(아침|점심|저녁).{0,8}(똑같|동일)", req.text)
+        if reference_match:
+            reference = _latest_meal_detail(
+                db, user_id=req.user_id, meal_type=reference_match.group(1)
+            )
+        result = analyze_meal_text(
+            req.text, meal_type=meal_type, answers=req.answers, reference_detail=reference
+        )
+    else:
+        result = analyze_workout_text(req.text, answers=req.answers)
+    return HealthTextAnalysisResponse(**result)
+
+
+@app.get("/api/v1/health/review/daily/{user_id}", response_model=DailyHealthReviewResponse)
+def get_daily_health_review(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> DailyHealthReviewResponse:
+    records = (
+        db.query(ActivityLogModel)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.logged_at >= _today_start(),
+            ActivityLogModel.record_type.in_(("meal_log", "workout_log")),
+        )
+        .order_by(ActivityLogModel.logged_at.asc())
+        .all()
+    )
+    activity_ids = [record.activity_id for record in records]
+    reward_rows = (
+        db.query(GameHealthRewardModel)
+        .filter(GameHealthRewardModel.activity_id.in_(activity_ids))
+        .all()
+        if activity_ids else []
+    )
+    result = daily_review(
+        records,
+        {row.activity_id: row.health_essence_earned for row in reward_rows},
+    )
+    return DailyHealthReviewResponse(**result)
 
 # record_type별로 ActivityLogModel.value가 어느 오늘자 집계 필드에
 # 더해지는지 매핑한다. 새 활동 타입을 추가할 때 이 맵에 한 줄만

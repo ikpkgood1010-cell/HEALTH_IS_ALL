@@ -290,6 +290,55 @@ def test_record_health_activity(client):
     assert "exp_gained" in data
 
 
+def test_text_analysis_save_copy_and_daily_review(journey_runtime):
+    client, _ = journey_runtime
+    user_id = "detailed_food_user"
+    client.post("/api/v1/game/state/initialize", json={"user_id": user_id})
+    lunch_text = (
+        "양배추 한줌을 먹고 10분 후 햇반에 시금치1큐브, 마늘 4개, 생강 반개, "
+        "냉동표고 10개, 산수유 10알, 우엉 손가락 한마디, 닭가슴살 1개랑 "
+        "생양파 1개 같이 먹었어."
+    )
+    analyzed = client.post(
+        "/api/v1/health/text/analyze",
+        json={
+            "user_id": user_id, "record_type": "meal_log", "meal_type": "점심",
+            "text": lunch_text,
+            "answers": {"grams_cooked_rice": 210, "grams_chicken_breast": 120},
+        },
+    )
+    assert analyzed.status_code == 200
+    analysis = analyzed.json()
+    assert analysis["estimated"]["meal_score"] == 90
+    saved = client.post(
+        "/api/v1/health/record",
+        json={
+            "user_id": user_id, "record_type": "meal_log", "value": analysis["value"],
+            "detail_data": analysis["storage_detail"],
+            "idempotency_key": "81111111-1111-4111-8111-111111111111",
+        },
+    )
+    assert saved.status_code == 200
+
+    copied = client.post(
+        "/api/v1/health/text/analyze",
+        json={
+            "user_id": user_id, "record_type": "meal_log", "meal_type": "저녁",
+            "text": "오늘 점심이랑 똑같이 먹었어",
+        },
+    )
+    assert copied.status_code == 200
+    assert copied.json()["estimated"]["totals"] == analysis["estimated"]["totals"]
+    assert copied.json()["storage_detail"]["copied_from_meal"] is True
+
+    review = client.get(f"/api/v1/health/review/daily/{user_id}")
+    assert review.status_code == 200
+    assert review.json()["meal_count"] == 1
+    assert review.json()["nutrition"]["protein_g"] > 40
+    assert review.json()["exp_earned"] == saved.json()["exp_gained"]
+    assert review.json()["health_essence_earned"] == 1
+
+
 def test_health_record_retry_is_persistently_idempotent(journey_runtime):
     client, testing_session = journey_runtime
     payload = {

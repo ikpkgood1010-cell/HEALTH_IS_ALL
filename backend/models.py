@@ -30,6 +30,43 @@ class HealthRecordResponse(BaseModel):
     health_essence_earned: int = 0
 
 
+class HealthTextAnalysisRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    record_type: Literal["meal_log", "workout_log"]
+    text: str = Field(..., min_length=1, max_length=4000)
+    meal_type: Optional[Literal["아침", "점심", "저녁", "간식"]] = None
+    answers: Dict[str, float] = Field(default_factory=dict)
+
+
+class HealthTextAnalysisResponse(BaseModel):
+    record_type: Literal["meal_log", "workout_log"]
+    status: Literal["READY", "NEEDS_CONFIRMATION"]
+    summary: str
+    estimated: Dict[str, Any]
+    confirmation_cards: List[Dict[str, Any]]
+    reward_preview: Dict[str, Any]
+    storage_detail: Dict[str, Any]
+    value: float
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+    blocks: List[Dict[str, Any]] = Field(default_factory=list)
+    sources: List[str] = Field(default_factory=list)
+
+
+class DailyHealthReviewResponse(BaseModel):
+    meal_count: int
+    workout_count: int
+    nutrition: Dict[str, float]
+    nutrition_low: Dict[str, float]
+    nutrition_high: Dict[str, float]
+    meal_score: Optional[float]
+    workout_minutes: float
+    exp_earned: int
+    health_essence_earned: int
+    meals: List[Dict[str, Any]]
+    workouts: List[Dict[str, Any]]
+    disclaimer: str
+
+
 class HealthIStateResponse(BaseModel):
     name: str = Field(default="건강이")
     level: int

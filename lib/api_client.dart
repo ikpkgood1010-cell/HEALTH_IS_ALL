@@ -57,6 +57,54 @@ class HealthIApiClient {
     return HealthRecordResult.fromJson(json);
   }
 
+  /// 자연어 식단/운동 기록을 저장 전에 분석한다. 불명확한 양은 확인 카드로 반환된다.
+  Future<HealthTextAnalysis> analyzeHealthText({
+    required String userId,
+    required String recordType,
+    required String text,
+    String? mealType,
+    Map<String, double> answers = const {},
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('$baseUrl/api/v1/health/text/analyze'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'record_type': recordType,
+            'text': text,
+            if (mealType != null) 'meal_type': mealType,
+            'answers': answers,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '상세 기록 분석 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return HealthTextAnalysis.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// 오늘 저장된 식단·운동과 실제 지급 보상을 한 번에 조회한다.
+  Future<DailyHealthReview> fetchDailyHealthReview(String userId) async {
+    final response = await _client
+        .get(Uri.parse('$baseUrl/api/v1/health/review/daily/$userId'))
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw HealthIApiException(
+        '오늘 상세 리뷰 조회 실패 (status: ${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
+    return DailyHealthReview.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   /// GET /api/v1/health-i/status/{user_id}
   Future<HealthIStatus> fetchHealthIStatus(String userId) async {
     final uri = Uri.parse('$baseUrl/api/v1/health-i/status/$userId');
@@ -496,8 +544,7 @@ class ConstellationNodeState {
         state: json['state'] as String? ?? 'LOCKED',
         advancementTier: (json['advancement_tier'] as num?)?.toInt() ?? 0,
         advancementName: json['advancement_name'] as String?,
-        healthEssenceCost:
-            (json['health_essence_cost'] as num?)?.toInt() ?? 0,
+        healthEssenceCost: (json['health_essence_cost'] as num?)?.toInt() ?? 0,
         starShardCost: (json['star_shard_cost'] as num?)?.toInt() ?? 0,
         canAfford: json['can_afford'] as bool? ?? false,
         effectLabel: json['effect_label'] as String?,
@@ -976,6 +1023,83 @@ class TrainingGroundsStatus {
       nextMilestoneLevel: (json['next_milestone_level'] as num?)?.toInt(),
     );
   }
+}
+
+class HealthTextAnalysis {
+  final String recordType;
+  final String status;
+  final String summary;
+  final double value;
+  final Map<String, dynamic> estimated;
+  final Map<String, dynamic> rewardPreview;
+  final Map<String, dynamic> storageDetail;
+  final List<Map<String, dynamic>> confirmationCards;
+  final List<Map<String, dynamic>> items;
+  final List<Map<String, dynamic>> blocks;
+  final List<String> sources;
+
+  const HealthTextAnalysis({
+    required this.recordType,
+    required this.status,
+    required this.summary,
+    required this.value,
+    required this.estimated,
+    required this.rewardPreview,
+    required this.storageDetail,
+    required this.confirmationCards,
+    required this.items,
+    required this.blocks,
+    required this.sources,
+  });
+
+  factory HealthTextAnalysis.fromJson(Map<String, dynamic> json) {
+    List<Map<String, dynamic>> maps(Object? value) => value is List
+        ? value
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList()
+        : const [];
+    return HealthTextAnalysis(
+      recordType: json['record_type'] as String? ?? '',
+      status: json['status'] as String? ?? 'estimated',
+      summary: json['summary'] as String? ?? '',
+      value: (json['value'] as num?)?.toDouble() ?? 0,
+      estimated:
+          Map<String, dynamic>.from(json['estimated'] as Map? ?? const {}),
+      rewardPreview:
+          Map<String, dynamic>.from(json['reward_preview'] as Map? ?? const {}),
+      storageDetail:
+          Map<String, dynamic>.from(json['storage_detail'] as Map? ?? const {}),
+      confirmationCards: maps(json['confirmation_cards']),
+      items: maps(json['items']),
+      blocks: maps(json['blocks']),
+      sources: (json['sources'] as List? ?? const []).map((e) => '$e').toList(),
+    );
+  }
+}
+
+class DailyHealthReview {
+  final Map<String, dynamic> data;
+  const DailyHealthReview(this.data);
+
+  factory DailyHealthReview.fromJson(Map<String, dynamic> json) =>
+      DailyHealthReview(json);
+
+  Map<String, dynamic> get nutrition =>
+      Map<String, dynamic>.from(data['nutrition'] as Map? ?? const {});
+  Map<String, dynamic> get nutritionLow =>
+      Map<String, dynamic>.from(data['nutrition_low'] as Map? ?? const {});
+  Map<String, dynamic> get nutritionHigh =>
+      Map<String, dynamic>.from(data['nutrition_high'] as Map? ?? const {});
+  List<Map<String, dynamic>> get meals => (data['meals'] as List? ?? const [])
+      .whereType<Map>()
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+  List<Map<String, dynamic>> get workouts =>
+      (data['workouts'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
 }
 
 class HealthIApiException implements Exception {

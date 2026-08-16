@@ -4,6 +4,7 @@ import 'api_data_provider.dart';
 import 'app_theme.dart';
 import 'diet_screen.dart';
 import 'workout_screen.dart';
+import 'daily_health_review_screen.dart';
 
 class ExerciseTabScreen extends StatelessWidget {
   const ExerciseTabScreen({super.key});
@@ -22,6 +23,8 @@ class ExerciseTabScreen extends StatelessWidget {
       buttonLabel: '운동 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const WorkoutScreen())),
+      onReview: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DailyHealthReviewScreen())),
     );
   }
 }
@@ -43,6 +46,8 @@ class DietTabScreen extends StatelessWidget {
       buttonLabel: '식단 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const DietScreen())),
+      onReview: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DailyHealthReviewScreen())),
     );
   }
 }
@@ -57,6 +62,7 @@ class _RecordTab extends StatelessWidget {
   final String message;
   final String buttonLabel;
   final VoidCallback onPressed;
+  final VoidCallback onReview;
 
   const _RecordTab(
       {required this.title,
@@ -67,7 +73,8 @@ class _RecordTab extends StatelessWidget {
       required this.icon,
       required this.message,
       required this.buttonLabel,
-      required this.onPressed});
+      required this.onPressed,
+      required this.onReview});
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +116,11 @@ class _RecordTab extends StatelessWidget {
               onPressed: onPressed,
               icon: const Icon(Icons.add),
               label: Text(buttonLabel)),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+              onPressed: onReview,
+              icon: const Icon(Icons.analytics_outlined),
+              label: const Text('오늘 전체 상세 리뷰')),
         ],
       ),
     );

@@ -257,6 +257,56 @@ class ApiDataProvider extends ChangeNotifier {
     }
   }
 
+  Future<HealthTextAnalysis?> analyzeDetailedText({
+    required String recordType,
+    required String text,
+    String? mealType,
+    Map<String, double> answers = const {},
+  }) async {
+    _lastError = null;
+    try {
+      return await _api.analyzeHealthText(
+        userId: userId,
+        recordType: recordType,
+        text: text,
+        mealType: mealType,
+        answers: answers,
+      );
+    } catch (_) {
+      _lastError = '문장을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<HealthRecordResult?> logAnalyzedRecord(
+    HealthTextAnalysis analysis,
+  ) {
+    return _recordActivity(
+      recordType: analysis.recordType,
+      value: analysis.value,
+      detailData: analysis.storageDetail,
+      localApply: () {
+        if (analysis.recordType == 'meal_log') {
+          _consumedCalories += analysis.value;
+        } else if (analysis.recordType == 'workout_log') {
+          _workoutMinutes += analysis.value;
+        }
+      },
+    );
+  }
+
+  Future<DailyHealthReview?> fetchDailyHealthReview() async {
+    _lastError = null;
+    try {
+      return await _api.fetchDailyHealthReview(userId);
+    } catch (_) {
+      _lastError = '오늘 상세 리뷰를 불러오지 못했습니다.';
+      notifyListeners();
+      return null;
+    }
+  }
+
   Future<HealthRecordResult?> logMeal(
     int calories,
     String mealType, {
