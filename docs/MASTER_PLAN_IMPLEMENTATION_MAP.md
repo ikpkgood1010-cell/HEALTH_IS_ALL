@@ -12,7 +12,7 @@
 | 별자리 7계층·0계층 영입 노드 5개·1~6계층 전직 노드 6개 | 0계층 경로·확정 영입과 1~6계층 개별 전직 완료(DB 미적용) | `backend/constellation_economy.py`, `backend/advancement_economy.py`, `lib/game_screen.dart` | 세부 전직 경로·스킬 효과 연결 |
 | 정령 확정 부화 | 화면 기준 완료 | `lib/game_screen.dart` | 부화 진행·저장 구현 |
 | 스킬·아바타 확정 제작 | 화면 기준 완료 | `lib/game_screen.dart` | 제작식·재료 구현 |
-| 환생 초기화·보존 | 100층 조건·별 조각 감사·30회 후보 시뮬레이션 완료 | `backend/idle_game_service.py`, `scripts/simulate_rebirth_economy.py` | DB 적용 후 실행 UI 승인 |
+| 환생 초기화·보존 | 100층 조건·별의 파편 감사·30회 후보 시뮬레이션 완료 | `backend/idle_game_service.py`, `scripts/simulate_rebirth_economy.py` | DB 적용 후 실행 UI 승인 |
 | 건강 기록→영구 성장 | 기록별·일별 상한, 멱등 감사, 과거 기록 소급 완료(DB 미적용) | `backend/health_essence_service.py`, `migrations/202608140002_health_essence_rewards.sql` | 실제 스키마 적용·운영 수치 검증 |
 | 건강 기록·HBI | 기존 완료 | `backend/main.py`, `backend/game_balance_engine.py` | 게임 파생 정수 어댑터 |
 | 기존 길드·12시간 모험 | SUPERSEDED | deprecated API와 미사용 `lib/guild_screen.dart` | 데이터 보존 확인 뒤 제거 |

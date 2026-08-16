@@ -1,5 +1,9 @@
 # Stitch AI 에셋 검토 — 2026-08-13
 
+> **HISTORICAL AUDIT / SUPERSEDED ART TARGET:** 이 감사의 SD 3D 재생성 제안은
+> 2026-08-16에 폐기됐다. 현재 기준은 `GAME_2D_ART_AND_ANIMATION_PIPELINE.md`의
+> HD 픽셀아트·고화질 원화·2D 고정 전투 조합이다.
+
 검토 원본: `stitch_muffin_style_character_set.zip` (19 PNG, 약 19.8MB)
 
 ## 결론

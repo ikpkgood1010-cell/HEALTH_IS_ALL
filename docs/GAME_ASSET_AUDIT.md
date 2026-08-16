@@ -1,5 +1,10 @@
 # 새 게임 에셋 감사
 
+> **HISTORICAL AUDIT / SUPERSEDED ART TARGET:** 아래 등급은 2026-08-16 이전 SD 3D
+> 방향에서 작성됐다. 현재 제작 기준은 `GAME_2D_ART_AND_ANIMATION_PIPELINE.md`이며,
+> 아래의 `3D로 재생성` 판정은 더 이상 실행 지시가 아니다. 기존 이미지는 구도·색감 원본
+> 참고 자료로만 보존한다.
+
 검토 원본: `1~8까지의 에셋 일부 생성.zip`
 
 총 672개 항목을 확인했으며 PNG 297개, HTML 59개, Markdown 16개와 폴더 300개로
