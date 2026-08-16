@@ -14,6 +14,7 @@ from backend.database import (
     GameHeroModel,
     GameProfileModel,
     get_db,
+    get_optional_db,
 )
 from backend.main import app
 
@@ -36,9 +37,11 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_optional_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_optional_db, None)
     engine.dispose()
 
 
@@ -60,13 +63,19 @@ def journey_runtime():
             db.close()
 
     previous_override = app.dependency_overrides.get(get_db)
+    previous_optional_override = app.dependency_overrides.get(get_optional_db)
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_optional_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client, testing_session
     if previous_override is None:
         app.dependency_overrides.pop(get_db, None)
     else:
         app.dependency_overrides[get_db] = previous_override
+    if previous_optional_override is None:
+        app.dependency_overrides.pop(get_optional_db, None)
+    else:
+        app.dependency_overrides[get_optional_db] = previous_optional_override
     engine.dispose()
 
 

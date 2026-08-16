@@ -21,6 +21,7 @@ from backend.database import (
     UserExpLogModel,
     database_configured,
     get_db,
+    get_optional_db,
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
@@ -167,13 +168,13 @@ def _latest_meal_detail(db: Session, *, user_id: str, meal_type: str) -> dict | 
 @app.post("/api/v1/health/text/analyze", response_model=HealthTextAnalysisResponse)
 def analyze_health_text(
     req: HealthTextAnalysisRequest,
-    db: Session = Depends(get_db),
+    db: Session | None = Depends(get_optional_db),
 ) -> HealthTextAnalysisResponse:
     if req.record_type == "meal_log":
         meal_type = req.meal_type or "간식"
         reference = None
         reference_match = re.search(r"(아침|점심|저녁).{0,8}(똑같|동일)", req.text)
-        if reference_match:
+        if reference_match and db is not None:
             reference = _latest_meal_detail(
                 db, user_id=req.user_id, meal_type=reference_match.group(1)
             )

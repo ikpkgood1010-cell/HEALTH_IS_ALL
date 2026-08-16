@@ -262,3 +262,15 @@ def get_db() -> Generator:
         yield db
     finally:
         db.close()
+
+
+def get_optional_db() -> Generator:
+    """Yield no session when DB is absent for read-optional analysis routes."""
+    if SessionLocal is None:
+        yield None
+        return
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
