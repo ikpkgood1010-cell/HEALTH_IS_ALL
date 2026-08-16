@@ -315,6 +315,10 @@ class _AnalysisResult extends StatelessWidget {
                 ],
               ),
             const Divider(height: 28),
+            if (analysis.sources.isNotEmpty) ...[
+              Text('계산 출처: ${analysis.sources.join(' · ')}'),
+              const SizedBox(height: 8),
+            ],
             Text(
               '예상 보상: Exp ${analysis.rewardPreview['base_exp']} · 건강 정수 ${analysis.rewardPreview['health_essence']}',
             ),

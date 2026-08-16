@@ -6,7 +6,7 @@ import json
 import re
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -27,6 +27,7 @@ from backend.database import (
 from backend.health_calculator import DynamicHealthCalculator
 from backend.health_essence_service import award_health_essence
 from backend.health_text_analysis import analyze_meal_text, analyze_workout_text, daily_review
+from backend.nutrition_data_service import NutritionDataService
 from backend.data_idempotency_engine import (
     DUPLICATE_RECORD_MESSAGE,
     canonical_detail_json,
@@ -124,6 +125,11 @@ app.add_middleware(
 progression_engine = ProgressionEngine()
 health_calc = DynamicHealthCalculator()
 ai_agent = HealthIAgentService()
+nutrition_data_service = NutritionDataService(
+    rda_api_key=settings.RDA_NUTRITION_API_KEY,
+    mfds_api_key=settings.MFDS_FOOD_API_KEY,
+    usda_api_key=settings.USDA_FDC_API_KEY,
+)
 
 
 def _today_start():
@@ -181,9 +187,35 @@ def analyze_health_text(
         result = analyze_meal_text(
             req.text, meal_type=meal_type, answers=req.answers, reference_detail=reference
         )
+        if (
+            reference is None
+            and result["confirmation_cards"]
+            and result["confirmation_cards"][0].get("id") == "food_not_found"
+            and nutrition_data_service.enabled_providers
+        ):
+            external_candidates = nutrition_data_service.search(req.text, limit=3)
+            result = analyze_meal_text(
+                req.text,
+                meal_type=meal_type,
+                answers=req.answers,
+                external_candidates=external_candidates,
+            )
     else:
         result = analyze_workout_text(req.text, answers=req.answers)
     return HealthTextAnalysisResponse(**result)
+
+
+@app.get("/api/v1/nutrition/foods/search")
+def search_nutrition_foods(
+    q: str = Query(..., min_length=1, max_length=120),
+    limit: int = Query(default=5, ge=1, le=10),
+) -> dict:
+    return {
+        "query": q,
+        "providers": nutrition_data_service.enabled_providers,
+        "items": nutrition_data_service.search(q, limit=limit),
+        "fallback_available": True,
+    }
 
 
 @app.get("/api/v1/health/review/daily/{user_id}", response_model=DailyHealthReviewResponse)

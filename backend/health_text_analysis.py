@@ -123,8 +123,10 @@ def analyze_meal_text(
     meal_type: str,
     answers: dict[str, float] | None = None,
     reference_detail: dict[str, Any] | None = None,
+    external_candidates: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     answers = answers or {}
+    external_candidates = external_candidates or []
     normalized = re.sub(r"\s+", " ", text.strip())
     if re.search(r"(점심|아침|저녁).{0,8}(똑같|동일)", normalized) and reference_detail:
         copied = dict(reference_detail)
@@ -183,11 +185,77 @@ def analyze_meal_text(
         if vague and f"grams_{food.code}" not in answers:
             cards.append(_card(food, grams, reason))
 
-    if not items:
+    if not items and external_candidates:
+        selected_index = answers.get("external_candidate_index")
+        if selected_index is None:
+            cards.append({
+                "id": "external_candidate_index",
+                "question": "공식 데이터에서 가장 가까운 음식을 선택해 주세요.",
+                "help": "이름·제조사·영양값을 비교한 뒤 실제로 먹은 항목을 선택합니다.",
+                "recommended_value": 0,
+                "options": [
+                    {
+                        "label": " · ".join(filter(None, (
+                            str(candidate.get("name") or "음식"),
+                            str(candidate.get("brand") or ""),
+                            str(candidate.get("source_label") or ""),
+                        ))),
+                        "value": index,
+                    }
+                    for index, candidate in enumerate(external_candidates)
+                ],
+            })
+        elif 0 <= int(selected_index) < len(external_candidates):
+            candidate = external_candidates[int(selected_index)]
+            basis_g = max(float(candidate.get("basis_g") or 100), 1)
+            suggested_g = max(float(candidate.get("serving_g") or basis_g), 1)
+            grams = float(answers.get("external_grams", suggested_g))
+            confirmed = "external_grams" in answers
+            low_g = grams if confirmed else grams * .75
+            high_g = grams if confirmed else grams * 1.25
+
+            def external_nutrients(weight: float) -> dict[str, float]:
+                factor = weight / basis_g
+                return {
+                    key: _round(float(candidate.get(key) or 0) * factor)
+                    for key in ("kcal", "carbs_g", "protein_g", "fat_g", "fiber_g")
+                }
+
+            nutrients = external_nutrients(grams)
+            groups = ["product"]
+            if nutrients["protein_g"] >= 10:
+                groups.append("protein")
+            if nutrients["carbs_g"] >= 15:
+                groups.append("grain")
+            items.append({
+                "code": f"{candidate.get('provider')}:{candidate.get('food_id')}",
+                "name": candidate.get("name") or "검색 음식",
+                "grams": _round(grams),
+                "range_g": [_round(low_g), _round(high_g)],
+                "basis": f"공식 DB {basis_g:g}g 기준",
+                "source": candidate.get("source_label") or candidate.get("provider") or "공식 영양 DB",
+                "groups": groups,
+                "nutrients": nutrients,
+                "nutrients_low": external_nutrients(low_g),
+                "nutrients_high": external_nutrients(high_g),
+            })
+            if not confirmed:
+                cards.append({
+                    "id": "external_grams",
+                    "question": f"{candidate.get('name') or '선택 음식'}을 {suggested_g:g}g 먹었나요?",
+                    "help": "공식 DB의 1회 제공량 후보입니다. 실제 섭취량과 가까운 값을 골라 주세요.",
+                    "recommended_value": suggested_g,
+                    "options": [
+                        {"label": f"{value:g}g", "value": value}
+                        for value in sorted({_round(suggested_g * .5), _round(suggested_g), _round(suggested_g * 1.5)})
+                    ],
+                })
+
+    if not items and not cards:
         cards.append({
             "id": "food_not_found",
             "question": "계산할 수 있는 음식명을 찾지 못했어요.",
-            "help": "제품명·음식명·수량을 더 구체적으로 적어 주세요. 예: 닭가슴살 100g, 즉석밥 210g",
+            "help": "제품명·음식명·수량을 더 구체적으로 적어 주세요. 외부 공식 DB 키가 설정되면 제품 후보도 자동 검색합니다.",
             "recommended_value": 0,
             "options": [],
         })

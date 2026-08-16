@@ -14,6 +14,9 @@ class Settings:
     ANTI_FARMING_INTERVAL_MINUTES: int = int(os.getenv("ANTI_FARMING_INTERVAL_MINUTES", "10"))
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
+    RDA_NUTRITION_API_KEY: str = os.getenv("RDA_NUTRITION_API_KEY", "").strip()
+    MFDS_FOOD_API_KEY: str = os.getenv("MFDS_FOOD_API_KEY", "").strip()
+    USDA_FDC_API_KEY: str = os.getenv("USDA_FDC_API_KEY", "").strip()
 
     @property
     def database_url(self) -> str:

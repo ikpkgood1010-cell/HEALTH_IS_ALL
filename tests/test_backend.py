@@ -17,6 +17,7 @@ from backend.database import (
     get_optional_db,
 )
 from backend.main import app
+from backend.main import nutrition_data_service
 
 
 @pytest.fixture(scope="module")
@@ -83,6 +84,28 @@ def test_health_check(client):
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "HEALTH IS ALL API"}
+
+
+def test_official_nutrition_search_and_unknown_meal_cards(client, monkeypatch):
+    candidate = {
+        "provider": "MFDS_PRODUCT_DB", "food_id": "P1", "name": "테스트 제품",
+        "brand": "테스트사", "basis_g": 100, "serving_g": 150,
+        "kcal": 300, "carbs_g": 50, "protein_g": 10, "fat_g": 8,
+        "fiber_g": 2, "source_label": "식품의약품안전처 식품영양성분DB",
+    }
+    monkeypatch.setattr(nutrition_data_service, "mfds_api_key", "test-key")
+    monkeypatch.setattr(nutrition_data_service, "search", lambda query, limit=5: [candidate])
+
+    searched = client.get("/api/v1/nutrition/foods/search", params={"q": "테스트 제품"})
+    assert searched.status_code == 200
+    assert searched.json()["items"][0]["food_id"] == "P1"
+
+    analyzed = client.post("/api/v1/health/text/analyze", json={
+        "user_id": "official_lookup_user", "record_type": "meal_log",
+        "meal_type": "간식", "text": "테스트 제품 한 봉지 먹었어",
+    })
+    assert analyzed.status_code == 200
+    assert analyzed.json()["confirmation_cards"][0]["id"] == "external_candidate_index"
 
 
 def test_canonical_idle_game_direction(client):

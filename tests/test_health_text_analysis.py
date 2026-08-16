@@ -46,6 +46,45 @@ def test_unknown_meal_stays_blocked_instead_of_saving_fake_calories():
     assert result["estimated"]["totals"]["kcal"] == 0
 
 
+def test_official_candidate_requires_food_then_portion_confirmation():
+    candidates = [{
+        "provider": "MFDS_PRODUCT_DB",
+        "food_id": "P1",
+        "name": "예시 볶음면",
+        "brand": "예시식품",
+        "basis_g": 100,
+        "serving_g": 140,
+        "kcal": 400,
+        "carbs_g": 65,
+        "protein_g": 8,
+        "fat_g": 12,
+        "fiber_g": 3,
+        "source_label": "식품의약품안전처 식품영양성분DB",
+    }]
+    choose_food = analyze_meal_text(
+        "예시 볶음면 1봉지", meal_type="저녁", external_candidates=candidates
+    )
+    assert choose_food["confirmation_cards"][0]["id"] == "external_candidate_index"
+
+    choose_portion = analyze_meal_text(
+        "예시 볶음면 1봉지",
+        meal_type="저녁",
+        answers={"external_candidate_index": 0},
+        external_candidates=candidates,
+    )
+    assert choose_portion["confirmation_cards"][0]["id"] == "external_grams"
+    assert choose_portion["estimated"]["totals"]["kcal"] == 560
+
+    ready = analyze_meal_text(
+        "예시 볶음면 1봉지",
+        meal_type="저녁",
+        answers={"external_candidate_index": 0, "external_grams": 140},
+        external_candidates=candidates,
+    )
+    assert ready["status"] == "READY"
+    assert ready["items"][0]["source"] == "식품의약품안전처 식품영양성분DB"
+
+
 def test_meal_answers_recalculate_nutrition():
     baseline = analyze_meal_text(LUNCH, meal_type="점심")
     changed = analyze_meal_text(
