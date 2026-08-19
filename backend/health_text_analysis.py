@@ -52,6 +52,13 @@ FOODS: tuple[FoodAverage, ...] = (
     FoodAverage("yogurt", "요거트", ("그릭요거트", "요거트", "요구르트"), 100, 80, 150, None, 73, 3.9, 9.9, 1.9, 0, ("protein",)),
     FoodAverage("bread", "빵", ("식빵", "빵"), 70, 40, 120, None, 265, 49.0, 9.0, 3.2, 2.7, ("grain",)),
     FoodAverage("kimchi", "김치", ("김치",), 50, 30, 100, None, 21, 3.6, 1.6, .5, 2.5, ("vegetable",)),
+    # Frequent quick-entry foods.  These are intentionally *not* treated as
+    # product-accurate: each produces a portion confirmation card and is
+    # replaced by an official candidate when the relevant API is configured.
+    FoodAverage("fried_chicken", "치킨", ("후라이드치킨", "프라이드치킨", "치킨"), 180, 120, 280, 180, 269, 8.5, 19.0, 17.0, .5, ("protein",), "제품·조리법 확인 전 치킨 평균값"),
+    FoodAverage("hot_dog", "핫도그", ("핫도그",), 120, 80, 180, 120, 290, 26.0, 11.0, 17.0, .8, ("grain", "protein"), "제품·조리법 확인 전 핫도그 평균값"),
+    FoodAverage("instant_ramen", "라면", ("컵라면", "라면"), 120, 90, 150, 120, 460, 62.0, 9.0, 18.0, 2.5, ("grain",), "제품·조리법 확인 전 라면 평균값"),
+    FoodAverage("tteok_skewer", "떡꼬치", ("떡꼬치",), 80, 50, 130, 80, 220, 43.0, 3.5, 3.0, 1.0, ("grain",), "제품·소스 확인 전 떡꼬치 평균값"),
 )
 
 
@@ -83,14 +90,14 @@ def _quantity_near(text: str, alias: str, food: FoodAverage) -> tuple[float, str
         return food.default_g, "한 줌 평균값", True
     if "손가락 한마디" in nearby or "손가락 한 마디" in nearby:
         return food.default_g, "손가락 한 마디 평균값", True
-    half = re.search(r"(?:반|0\.5)\s*(개|쪽)", nearby)
+    half = re.search(r"(?:반|0\.5)\s*(개|쪽|봉지|마리|조각|꼬치|인분)", nearby)
     if half and food.count_g:
         return food.count_g * .5, "반 개 평균값", True
-    count = re.search(r"(\d+(?:\.\d+)?)\s*(개|알|쪽|큐브|장|팩)", nearby)
+    count = re.search(r"(\d+(?:\.\d+)?)\s*(개|알|쪽|큐브|장|팩|봉지|마리|조각|꼬치|인분|그릇|컵)", nearby)
     if count and food.count_g:
         number = float(count.group(1))
         return number * food.count_g, f"{count.group(1)}{count.group(2)} 평균값", True
-    korean_count = re.search(r"(한|두|세|네)\s*(개|알|쪽|큐브|장|팩)", nearby)
+    korean_count = re.search(r"(한|두|세|네)\s*(개|알|쪽|큐브|장|팩|봉지|마리|조각|꼬치|인분|그릇|컵)", nearby)
     if korean_count and food.count_g:
         number = KOREAN_NUMBERS[korean_count.group(1)]
         return number * food.count_g, f"{korean_count.group(1)} {korean_count.group(2)} 평균값", True
@@ -117,6 +124,95 @@ def _totals(items: Iterable[dict[str, Any]], key: str = "nutrients") -> dict[str
     return {field: _round(sum(float(item[key][field]) for item in items)) for field in fields}
 
 
+def _append_external_food(
+    *,
+    items: list[dict[str, Any]],
+    cards: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    answers: dict[str, float],
+    query: str,
+    candidate_id: str,
+    grams_id: str,
+    not_found_id: str,
+) -> None:
+    """Add one unresolved food's official candidate/portion confirmation flow."""
+    if not candidates:
+        cards.append({
+            "id": not_found_id,
+            "question": f"‘{query}’의 영양 정보를 찾지 못했어요.",
+            "help": "제품명·브랜드·중량을 더 구체적으로 적어 주세요. 추정값을 임의로 저장하지 않습니다.",
+            "recommended_value": 0,
+            "options": [],
+        })
+        return
+
+    selected_index = answers.get(candidate_id)
+    if selected_index is None or not 0 <= int(selected_index) < len(candidates):
+        cards.append({
+            "id": candidate_id,
+            "question": f"공식 데이터에서 ‘{query}’와 가장 가까운 음식을 선택해 주세요.",
+            "help": "이름·제조사·영양값을 비교한 뒤 실제로 먹은 항목을 선택합니다.",
+            "recommended_value": 0,
+            "options": [
+                {
+                    "label": " · ".join(filter(None, (
+                        str(candidate.get("name") or "음식"),
+                        str(candidate.get("brand") or ""),
+                        str(candidate.get("source_label") or ""),
+                    ))),
+                    "value": index,
+                }
+                for index, candidate in enumerate(candidates)
+            ],
+        })
+        return
+
+    candidate = candidates[int(selected_index)]
+    basis_g = max(float(candidate.get("basis_g") or 100), 1)
+    suggested_g = max(float(candidate.get("serving_g") or basis_g), 1)
+    grams = float(answers.get(grams_id, suggested_g))
+    confirmed = grams_id in answers
+    low_g = grams if confirmed else grams * .75
+    high_g = grams if confirmed else grams * 1.25
+
+    def external_nutrients(weight: float) -> dict[str, float]:
+        factor = weight / basis_g
+        return {
+            key: _round(float(candidate.get(key) or 0) * factor)
+            for key in ("kcal", "carbs_g", "protein_g", "fat_g", "fiber_g")
+        }
+
+    nutrients = external_nutrients(grams)
+    groups = ["product"]
+    if nutrients["protein_g"] >= 10:
+        groups.append("protein")
+    if nutrients["carbs_g"] >= 15:
+        groups.append("grain")
+    items.append({
+        "code": f"{candidate.get('provider')}:{candidate.get('food_id')}",
+        "name": candidate.get("name") or query,
+        "grams": _round(grams),
+        "range_g": [_round(low_g), _round(high_g)],
+        "basis": f"공식 DB {basis_g:g}g 기준",
+        "source": candidate.get("source_label") or candidate.get("provider") or "공식 영양 DB",
+        "groups": groups,
+        "nutrients": nutrients,
+        "nutrients_low": external_nutrients(low_g),
+        "nutrients_high": external_nutrients(high_g),
+    })
+    if not confirmed:
+        cards.append({
+            "id": grams_id,
+            "question": f"{candidate.get('name') or query}을 {suggested_g:g}g 먹었나요?",
+            "help": "공식 DB의 1회 제공량 후보입니다. 실제 섭취량과 가까운 값을 골라 주세요.",
+            "recommended_value": suggested_g,
+            "options": [
+                {"label": f"{value:g}g", "value": value}
+                for value in sorted({_round(suggested_g * .5), _round(suggested_g), _round(suggested_g * 1.5)})
+            ],
+        })
+
+
 def analyze_meal_text(
     text: str,
     *,
@@ -124,9 +220,11 @@ def analyze_meal_text(
     answers: dict[str, float] | None = None,
     reference_detail: dict[str, Any] | None = None,
     external_candidates: list[dict[str, Any]] | None = None,
+    external_candidates_by_query: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     answers = answers or {}
     external_candidates = external_candidates or []
+    external_candidates_by_query = external_candidates_by_query or {}
     normalized = re.sub(r"\s+", " ", text.strip())
     if re.search(r"(점심|아침|저녁).{0,8}(똑같|동일)", normalized) and reference_detail:
         copied = dict(reference_detail)
@@ -185,71 +283,36 @@ def analyze_meal_text(
         if vague and f"grams_{food.code}" not in answers:
             cards.append(_card(food, grams, reason))
 
+    # Legacy single-query argument is retained for API compatibility.  The
+    # query map is the compound-meal path: local and official items coexist,
+    # and every unresolved food receives its own candidate/portion answer.
+    has_local_items = bool(items)
     if not items and external_candidates:
-        selected_index = answers.get("external_candidate_index")
-        if selected_index is None:
-            cards.append({
-                "id": "external_candidate_index",
-                "question": "공식 데이터에서 가장 가까운 음식을 선택해 주세요.",
-                "help": "이름·제조사·영양값을 비교한 뒤 실제로 먹은 항목을 선택합니다.",
-                "recommended_value": 0,
-                "options": [
-                    {
-                        "label": " · ".join(filter(None, (
-                            str(candidate.get("name") or "음식"),
-                            str(candidate.get("brand") or ""),
-                            str(candidate.get("source_label") or ""),
-                        ))),
-                        "value": index,
-                    }
-                    for index, candidate in enumerate(external_candidates)
-                ],
-            })
-        elif 0 <= int(selected_index) < len(external_candidates):
-            candidate = external_candidates[int(selected_index)]
-            basis_g = max(float(candidate.get("basis_g") or 100), 1)
-            suggested_g = max(float(candidate.get("serving_g") or basis_g), 1)
-            grams = float(answers.get("external_grams", suggested_g))
-            confirmed = "external_grams" in answers
-            low_g = grams if confirmed else grams * .75
-            high_g = grams if confirmed else grams * 1.25
-
-            def external_nutrients(weight: float) -> dict[str, float]:
-                factor = weight / basis_g
-                return {
-                    key: _round(float(candidate.get(key) or 0) * factor)
-                    for key in ("kcal", "carbs_g", "protein_g", "fat_g", "fiber_g")
-                }
-
-            nutrients = external_nutrients(grams)
-            groups = ["product"]
-            if nutrients["protein_g"] >= 10:
-                groups.append("protein")
-            if nutrients["carbs_g"] >= 15:
-                groups.append("grain")
-            items.append({
-                "code": f"{candidate.get('provider')}:{candidate.get('food_id')}",
-                "name": candidate.get("name") or "검색 음식",
-                "grams": _round(grams),
-                "range_g": [_round(low_g), _round(high_g)],
-                "basis": f"공식 DB {basis_g:g}g 기준",
-                "source": candidate.get("source_label") or candidate.get("provider") or "공식 영양 DB",
-                "groups": groups,
-                "nutrients": nutrients,
-                "nutrients_low": external_nutrients(low_g),
-                "nutrients_high": external_nutrients(high_g),
-            })
-            if not confirmed:
-                cards.append({
-                    "id": "external_grams",
-                    "question": f"{candidate.get('name') or '선택 음식'}을 {suggested_g:g}g 먹었나요?",
-                    "help": "공식 DB의 1회 제공량 후보입니다. 실제 섭취량과 가까운 값을 골라 주세요.",
-                    "recommended_value": suggested_g,
-                    "options": [
-                        {"label": f"{value:g}g", "value": value}
-                        for value in sorted({_round(suggested_g * .5), _round(suggested_g), _round(suggested_g * 1.5)})
-                    ],
-                })
+        _append_external_food(
+            items=items,
+            cards=cards,
+            candidates=external_candidates,
+            answers=answers,
+            query="입력한 음식",
+            candidate_id="external_candidate_index",
+            grams_id="external_grams",
+            not_found_id="food_not_found",
+        )
+    for index, (query, candidates) in enumerate(external_candidates_by_query.items()):
+        # Preserve the original one-food answer IDs for already deployed
+        # clients. Compound (or local+external) input uses independent IDs.
+        legacy_single_query = not has_local_items and len(external_candidates_by_query) == 1
+        suffix = str(index)
+        _append_external_food(
+            items=items,
+            cards=cards,
+            candidates=candidates,
+            answers=answers,
+            query=query,
+            candidate_id="external_candidate_index" if legacy_single_query else f"external_candidate_index_{suffix}",
+            grams_id="external_grams" if legacy_single_query else f"external_grams_{suffix}",
+            not_found_id="food_not_found" if legacy_single_query else f"food_not_found_{suffix}",
+        )
 
     if not items and not cards:
         cards.append({
@@ -307,6 +370,7 @@ def _compact_meal_detail(detail: dict[str, Any]) -> dict[str, Any]:
         "totals": detail["totals"],
         "totals_low": detail["totals_low"],
         "totals_high": detail["totals_high"],
+        "sources": detail.get("sources", []),
         "items": [
             {"name": item["name"], "grams": item["grams"]}
             for item in detail["items"]
@@ -449,6 +513,7 @@ def daily_review(records: Iterable[Any], rewards: dict[str, int]) -> dict[str, A
                 "record_id": record.activity_id, "meal_type": detail.get("meal_type", "식사"),
                 "text": detail.get("original_text"), "score": detail.get("meal_score"),
                 "totals": totals, "items": detail.get("items", []), "exp": record.exp_gained,
+                "sources": detail.get("sources", []),
                 "food_variety_count": detail.get("food_variety_count", len(detail.get("items", []))),
                 "interval_minutes": detail.get("interval_minutes", []),
                 "preparation_methods": detail.get("preparation_methods", []),

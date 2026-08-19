@@ -96,6 +96,68 @@ def test_meal_answers_recalculate_nutrition():
     assert "grams_cooked_rice" not in {card["id"] for card in changed["confirmation_cards"]}
 
 
+def test_common_quick_foods_are_split_and_confirmed_individually():
+    result = analyze_meal_text(
+        "치킨 2조각, 핫도그 1개, 라면 1봉지, 떡꼬치 2꼬치 먹었어",
+        meal_type="간식",
+    )
+
+    assert {item["name"] for item in result["items"]} == {"치킨", "핫도그", "라면", "떡꼬치"}
+    assert {card["id"] for card in result["confirmation_cards"]} == {
+        "grams_fried_chicken", "grams_hot_dog", "grams_instant_ramen", "grams_tteok_skewer",
+    }
+    assert result["estimated"]["totals"]["kcal"] > 1000
+
+
+def test_compound_official_candidates_merge_with_catalogue_foods():
+    candidates = {
+        "불닭볶음면": [{
+            "provider": "MFDS_PRODUCT_DB", "food_id": "N1", "name": "불닭볶음면",
+            "brand": "예시사", "basis_g": 100, "serving_g": 140,
+            "kcal": 420, "carbs_g": 70, "protein_g": 9, "fat_g": 13,
+            "fiber_g": 2, "source_label": "식품의약품안전처 식품영양성분DB",
+        }],
+        "제육볶음": [{
+            "provider": "RDA_NATIONAL_STANDARD_10_4", "food_id": "N2", "name": "제육볶음",
+            "brand": None, "basis_g": 100, "serving_g": 180,
+            "kcal": 210, "carbs_g": 12, "protein_g": 18, "fat_g": 10,
+            "fiber_g": 1, "source_label": "국가표준식품성분 DB 10.4(2026)",
+        }],
+    }
+    text = "양배추 한 줌과 불닭볶음면 1봉지, 제육볶음 1인분 먹었어"
+    choosing = analyze_meal_text(text, meal_type="저녁", external_candidates_by_query=candidates)
+    assert {item["name"] for item in choosing["items"]} == {"양배추"}
+    assert {card["id"] for card in choosing["confirmation_cards"]} >= {
+        "grams_cabbage", "external_candidate_index_0", "external_candidate_index_1",
+    }
+
+    portions = analyze_meal_text(
+        text,
+        meal_type="저녁",
+        answers={"external_candidate_index_0": 0, "external_candidate_index_1": 0},
+        external_candidates_by_query=candidates,
+    )
+    assert {card["id"] for card in portions["confirmation_cards"]} >= {
+        "external_grams_0", "external_grams_1",
+    }
+
+    ready = analyze_meal_text(
+        text,
+        meal_type="저녁",
+        answers={
+            "grams_cabbage": 70,
+            "external_candidate_index_0": 0,
+            "external_candidate_index_1": 0,
+            "external_grams_0": 140,
+            "external_grams_1": 180,
+        },
+        external_candidates_by_query=candidates,
+    )
+    assert ready["status"] == "READY"
+    assert {item["name"] for item in ready["items"]} == {"양배추", "불닭볶음면", "제육볶음"}
+    assert "식품의약품안전처 식품영양성분DB" in ready["sources"]
+
+
 def test_workout_text_is_split_into_structured_blocks():
     result = analyze_workout_text(WORKOUT)
     assert result["estimated"] == {

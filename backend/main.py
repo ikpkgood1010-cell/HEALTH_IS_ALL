@@ -26,8 +26,8 @@ from backend.database import (
 )
 from backend.health_calculator import DynamicHealthCalculator
 from backend.health_essence_service import award_health_essence
-from backend.health_text_analysis import analyze_meal_text, analyze_workout_text, daily_review
-from backend.nutrition_data_service import NutritionDataService
+from backend.health_text_analysis import analyze_meal_text, analyze_workout_text, daily_review, FOODS
+from backend.nutrition_data_service import NutritionDataService, extract_compound_food_queries
 from backend.data_idempotency_engine import (
     DUPLICATE_RECORD_MESSAGE,
     canonical_detail_json,
@@ -184,22 +184,27 @@ def analyze_health_text(
             reference = _latest_meal_detail(
                 db, user_id=req.user_id, meal_type=reference_match.group(1)
             )
-        result = analyze_meal_text(
-            req.text, meal_type=meal_type, answers=req.answers, reference_detail=reference
+        # Split unresolved foods before analysis.  A compound record can now
+        # mix catalogue foods with several products, and each product gets an
+        # independent official-data candidate/portion confirmation flow.
+        aliases = tuple(alias for food in FOODS for alias in food.aliases)
+        unresolved_queries = (
+            extract_compound_food_queries(req.text, known_aliases=aliases)
+            if reference is None
+            else []
         )
-        if (
-            reference is None
-            and result["confirmation_cards"]
-            and result["confirmation_cards"][0].get("id") == "food_not_found"
-            and nutrition_data_service.enabled_providers
-        ):
-            external_candidates = nutrition_data_service.search(req.text, limit=3)
-            result = analyze_meal_text(
-                req.text,
-                meal_type=meal_type,
-                answers=req.answers,
-                external_candidates=external_candidates,
-            )
+        external_candidates_by_query = {
+            query: nutrition_data_service.search(query, limit=3)
+            if nutrition_data_service.enabled_providers else []
+            for query in unresolved_queries
+        }
+        result = analyze_meal_text(
+            req.text,
+            meal_type=meal_type,
+            answers=req.answers,
+            reference_detail=reference,
+            external_candidates_by_query=external_candidates_by_query,
+        )
     else:
         result = analyze_workout_text(req.text, answers=req.answers)
     return HealthTextAnalysisResponse(**result)

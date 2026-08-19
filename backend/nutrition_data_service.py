@@ -63,6 +63,53 @@ def extract_food_lookup_query(text: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip()[:80]
 
 
+def extract_compound_food_queries(
+    text: str,
+    *,
+    known_aliases: Iterable[str] = (),
+    limit: int = 4,
+) -> list[str]:
+    """Return plausible *unresolved* food names from a Korean meal sentence.
+
+    This is deliberately a small, deterministic pre-parser rather than a
+    pretend-NLP system.  Known catalogue aliases are removed first, then the
+    remaining text is split on the conjunctions people normally use when
+    listing foods.  Each result is a separate official-data lookup, so
+    ``치킨, 핫도그, 라면`` never becomes one meaningless search query.
+    """
+    remaining = text
+    for alias in sorted({alias for alias in known_aliases if alias}, key=len, reverse=True):
+        remaining = remaining.replace(alias, " ")
+
+    parts = re.split(
+        r"(?:[,，/·+]|\b(?:그리고|및)\b|(?:랑|와|과|하고|먹고|먹은|먹었어|먹었다|"
+        r"섭취했어|섭취했다|같이|후|뒤))",
+        remaining,
+    )
+    noise = re.compile(
+        r"(?:\d+(?:\.\d+)?|한|두|세|네|반)\s*(?:g|그램|kg|개|알|봉지|팩|장|"
+        r"인분|그릇|컵|마리|조각|꼬치|큐브|줌|분|초)|"
+        r"(?:오늘|아침|점심|저녁|간식|을|를|이|가|은|는|에|에서|로|으로|"
+        r"하고|해서|넣고|넣어|돌렸고|전자레인지|조리|먹어|먹었|섭취|"
+        r"처음|보는|외국|음식|한접시|한 접시)",
+        re.I,
+    )
+    queries: list[str] = []
+    for part in parts:
+        cleaned = noise.sub(" ", part)
+        cleaned = re.sub(r"[^0-9A-Za-z가-힣 ]+", " ", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        # Particles can remain attached to a word when the sentence was not
+        # split at that particle.  Strip only common trailing particles.
+        cleaned = re.sub(r"(?:을|를|이|가|은|는|에|의)$", "", cleaned).strip()
+        if len(cleaned) < 2 or cleaned in queries:
+            continue
+        queries.append(cleaned[:60])
+        if len(queries) == limit:
+            break
+    return queries
+
+
 class NutritionDataService:
     RDA_URL = "https://www.nics.go.kr/food/kfi/openapi/service"
     MFDS_URL = "https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02"

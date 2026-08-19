@@ -186,6 +186,7 @@ class _ReviewBody extends StatelessWidget {
     final items = (meal['items'] as List? ?? const []).whereType<Map>();
     final intervals = meal['interval_minutes'] as List? ?? const [];
     final methods = meal['preparation_methods'] as List? ?? const [];
+    final sources = meal['sources'] as List? ?? const [];
     return Card(
       child: ExpansionTile(
         title: Text('${meal['meal_type']} · ${_n(totals['kcal'])} kcal'),
@@ -205,6 +206,10 @@ class _ReviewBody extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
               '탄수화물 ${_n(totals['carbs_g'])}g · 단백질 ${_n(totals['protein_g'])}g · 지방 ${_n(totals['fat_g'])}g · 식이섬유 ${_n(totals['fiber_g'])}g'),
+          if (sources.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('계산 출처: ${sources.join(' · ')}'),
+          ],
         ],
       ),
     );
