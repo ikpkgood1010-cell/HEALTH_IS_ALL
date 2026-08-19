@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import json
+import re
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -14,13 +16,18 @@ from backend.ai_agent_service import HealthIAgentService
 from backend.config import settings, utc_now
 from backend.database import (
     ActivityLogModel,
+    GameHealthRewardModel,
     HealthIProfileModel,
     UserExpLogModel,
     database_configured,
     get_db,
+    get_optional_db,
     engine,
 )
 from backend.health_calculator import DynamicHealthCalculator
+from backend.health_essence_service import award_health_essence
+from backend.health_text_analysis import analyze_meal_text, analyze_workout_text, daily_review, FOODS
+from backend.nutrition_data_service import NutritionDataService, extract_compound_food_queries
 from backend.data_idempotency_engine import (
     DUPLICATE_RECORD_MESSAGE,
     canonical_detail_json,
@@ -32,17 +39,49 @@ from backend.models import (
     AdventureHistoryResponse,
     AdventureResponse,
     AdventureSettleRequest,
+    CanonicalGameStateResponse,
+    ConstellationUnlockRequest,
+    GameDirectionResponse,
+    GameInitializeRequest,
     GameOverviewResponse,
     HealthIStateResponse,
     HealthRecordRequest,
     HealthRecordResponse,
+    HealthTextAnalysisRequest,
+    HealthTextAnalysisResponse,
+    DailyHealthReviewResponse,
     HeroResponse,
     HeroRosterResponse,
+    InitialHeroSelectionRequest,
+    IdleBattleSettleRequest,
+    IdleBattleSettleResponse,
     RecoveryCalculateRequest,
     RecoveryCalculateResponse,
+    RebirthExecuteRequest,
+    RebirthExecuteResponse,
+    RebirthPreviewResponse,
     TrainingGroundsResponse,
 )
 from backend.game_balance_engine import build_game_overview
+from backend.idle_game_service import (
+    BattleNotReadyError,
+    BattleSettlementConflictError,
+    ConstellationNodeNotReadyError,
+    ConstellationRevisionConflictError,
+    GameStateNotFoundError,
+    InitialHeroSelectionConflictError,
+    InsufficientGoldError,
+    InsufficientPermanentCurrencyError,
+    RebirthNotReadyError,
+    RebirthRevisionConflictError,
+    execute_rebirth,
+    get_game_state,
+    initialize_game_state,
+    preview_rebirth,
+    select_initial_hero,
+    settle_idle_battle,
+    unlock_constellation_node,
+)
 from backend.adventure_service import (
     AdventureNotFoundError,
     AdventureOwnershipError,
@@ -86,6 +125,131 @@ app.add_middleware(
 progression_engine = ProgressionEngine()
 health_calc = DynamicHealthCalculator()
 ai_agent = HealthIAgentService()
+nutrition_data_service = NutritionDataService(
+    rda_api_key=settings.RDA_NUTRITION_API_KEY,
+    mfds_api_key=settings.MFDS_FOOD_API_KEY,
+    usda_api_key=settings.USDA_FDC_API_KEY,
+)
+
+
+def _today_start():
+    now = utc_now()
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _latest_meal_detail(db: Session, *, user_id: str, meal_type: str) -> dict | None:
+    records = (
+        db.query(ActivityLogModel)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.record_type == "meal_log",
+            ActivityLogModel.logged_at >= _today_start(),
+        )
+        .order_by(ActivityLogModel.logged_at.desc())
+        .all()
+    )
+    for record in records:
+        try:
+            detail = json.loads(record.detail_json) if record.detail_json else {}
+        except (TypeError, ValueError):
+            continue
+        if detail.get("meal_type") == meal_type and detail.get("analysis_version") == "meal_text_v1":
+            # Recreate the rich shape expected by the analyzer from the compact stored shape.
+            items = []
+            for item in detail.get("items", []):
+                nutrients = {}
+                items.append({
+                    "code": item.get("name"), "name": item.get("name"), "grams": item.get("grams"),
+                    "range_g": [item.get("grams"), item.get("grams")], "basis": "이전 확정 식사",
+                    "source": "이전 확정 식사", "groups": [], "nutrients": nutrients,
+                    "nutrients_low": nutrients, "nutrients_high": nutrients,
+                })
+            return {
+                **detail, "items": items, "confirmation_cards": [],
+                "summary": f"오늘 {meal_type} 기록과 같은 구성", "sources": ["이전 확정 식사"],
+            }
+    return None
+
+
+@app.post("/api/v1/health/text/analyze", response_model=HealthTextAnalysisResponse)
+def analyze_health_text(
+    req: HealthTextAnalysisRequest,
+    db: Session | None = Depends(get_optional_db),
+) -> HealthTextAnalysisResponse:
+    if req.record_type == "meal_log":
+        meal_type = req.meal_type or "간식"
+        reference = None
+        reference_match = re.search(r"(아침|점심|저녁).{0,8}(똑같|동일)", req.text)
+        if reference_match and db is not None:
+            reference = _latest_meal_detail(
+                db, user_id=req.user_id, meal_type=reference_match.group(1)
+            )
+        # Split unresolved foods before analysis.  A compound record can now
+        # mix catalogue foods with several products, and each product gets an
+        # independent official-data candidate/portion confirmation flow.
+        aliases = tuple(alias for food in FOODS for alias in food.aliases)
+        unresolved_queries = (
+            extract_compound_food_queries(req.text, known_aliases=aliases)
+            if reference is None
+            else []
+        )
+        external_candidates_by_query = {
+            query: nutrition_data_service.search(query, limit=3)
+            if nutrition_data_service.enabled_providers else []
+            for query in unresolved_queries
+        }
+        result = analyze_meal_text(
+            req.text,
+            meal_type=meal_type,
+            answers=req.answers,
+            reference_detail=reference,
+            external_candidates_by_query=external_candidates_by_query,
+        )
+    else:
+        result = analyze_workout_text(req.text, answers=req.answers)
+    return HealthTextAnalysisResponse(**result)
+
+
+@app.get("/api/v1/nutrition/foods/search")
+def search_nutrition_foods(
+    q: str = Query(..., min_length=1, max_length=120),
+    limit: int = Query(default=5, ge=1, le=10),
+) -> dict:
+    return {
+        "query": q,
+        "providers": nutrition_data_service.enabled_providers,
+        "items": nutrition_data_service.search(q, limit=limit),
+        "fallback_available": True,
+    }
+
+
+@app.get("/api/v1/health/review/daily/{user_id}", response_model=DailyHealthReviewResponse)
+def get_daily_health_review(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> DailyHealthReviewResponse:
+    records = (
+        db.query(ActivityLogModel)
+        .filter(
+            ActivityLogModel.user_id == user_id,
+            ActivityLogModel.logged_at >= _today_start(),
+            ActivityLogModel.record_type.in_(("meal_log", "workout_log")),
+        )
+        .order_by(ActivityLogModel.logged_at.asc())
+        .all()
+    )
+    activity_ids = [record.activity_id for record in records]
+    reward_rows = (
+        db.query(GameHealthRewardModel)
+        .filter(GameHealthRewardModel.activity_id.in_(activity_ids))
+        .all()
+        if activity_ids else []
+    )
+    result = daily_review(
+        records,
+        {row.activity_id: row.health_essence_earned for row in reward_rows},
+    )
+    return DailyHealthReviewResponse(**result)
 
 # record_type별로 ActivityLogModel.value가 어느 오늘자 집계 필드에
 # 더해지는지 매핑한다. 새 활동 타입을 추가할 때 이 맵에 한 줄만
@@ -168,6 +332,9 @@ def _duplicate_health_record_response(
             status_code=409,
             detail="Idempotency key was already used for a different health record",
         )
+    reward = db.query(GameHealthRewardModel).filter_by(
+        activity_id=existing.activity_id,
+    ).first()
     return HealthRecordResponse(
         success=True,
         record_id=existing.activity_id,
@@ -175,6 +342,7 @@ def _duplicate_health_record_response(
         current_daily_exp=_daily_exp_total(db, req.user_id),
         message=DUPLICATE_RECORD_MESSAGE,
         duplicate=True,
+        health_essence_earned=(reward.health_essence_earned if reward else 0),
     )
 
 
@@ -289,7 +457,15 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
         profile.level = (profile.current_exp // 300) + 1
         profile.updated_at = utc_now()
 
+    health_essence_earned = 0
     try:
+        health_essence_earned = award_health_essence(
+            db,
+            user_id=req.user_id,
+            activity_id=record_id,
+            record_type=req.record_type,
+            value=req.value,
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -312,6 +488,7 @@ def log_health_activity(req: HealthRecordRequest, db: Session = Depends(get_db))
         current_daily_exp=int(engine_res["current_daily_exp"]),
         message=engine_res["reason"],
         duplicate=False,
+        health_essence_earned=health_essence_earned,
     )
 
 
@@ -382,9 +559,206 @@ def get_health_i_status(user_id: str, db: Session = Depends(get_db)) -> HealthIS
     )
 
 
-@app.get("/api/v1/game/overview/{user_id}", response_model=GameOverviewResponse)
+@app.get("/api/v1/game/direction", response_model=GameDirectionResponse)
+def get_game_direction() -> GameDirectionResponse:
+    """Return the canonical, non-random game foundation without reading user data."""
+    return GameDirectionResponse(
+        official_name="HEALTH IS ALL : 건강이 전부다 !!",
+        health_tabs=["홈", "운동", "식단", "마이"],
+        game_entry="HOME_TOP_CARD",
+        party_roles=["탱커", "전사", "마법사", "궁수", "도적", "치유사"],
+        full_auto_battle=True,
+        normal_rooms_per_floor=5,
+        boss_rooms_per_floor=1,
+        constellation_layers=7,
+        large_nodes_per_layer=6,
+        deterministic_spirit_hatching=True,
+        random_gacha=False,
+        equipment_inventory=False,
+        rebirth_resets=["tower_floor", "gold", "run_buffs", "small_nodes", "medium_nodes"],
+        rebirth_retains=[
+            "recruited_heroes",
+            "job_advancement_tiers",
+            "advancement_appearance",
+            "large_nodes",
+            "skills",
+            "avatars",
+            "spirits",
+            "health_essence",
+            "star_shards",
+            "transcendence_traits",
+        ],
+    )
+
+
+@app.post(
+    "/api/v1/game/state/initialize",
+    response_model=CanonicalGameStateResponse,
+)
+def initialize_canonical_game(
+    request: GameInitializeRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Idempotently create the six canonical hero slots and empty run state."""
+    return CanonicalGameStateResponse(
+        **initialize_game_state(db, user_id=request.user_id)
+    )
+
+
+@app.post(
+    "/api/v1/game/heroes/select-initial",
+    response_model=CanonicalGameStateResponse,
+)
+def select_canonical_initial_hero(
+    request: InitialHeroSelectionRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Select one free starter; the other five remain layer-0 recruit nodes."""
+    try:
+        state = select_initial_hero(
+            db,
+            user_id=request.user_id,
+            hero_code=request.hero_code,
+            expected_revision=request.expected_revision,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except InitialHeroSelectionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return CanonicalGameStateResponse(**state)
+
+
+@app.get(
+    "/api/v1/game/state/{user_id}",
+    response_model=CanonicalGameStateResponse,
+)
+def get_canonical_game(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Read canonical game state without creating or advancing anything."""
+    try:
+        state = get_game_state(db, user_id=user_id)
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    return CanonicalGameStateResponse(**state)
+
+
+@app.post(
+    "/api/v1/game/battle/settle",
+    response_model=IdleBattleSettleResponse,
+)
+def settle_canonical_idle_battle(
+    request: IdleBattleSettleRequest,
+    db: Session = Depends(get_db),
+) -> IdleBattleSettleResponse:
+    """Advance rolling auto-battle from server time with idempotent rewards."""
+    try:
+        result = settle_idle_battle(
+            db,
+            user_id=request.user_id,
+            settlement_id=request.idempotency_key,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except BattleNotReadyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except BattleSettlementConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return IdleBattleSettleResponse(
+        settlement_id=result.settlement_id,
+        already_settled=result.already_settled,
+        elapsed_seconds=result.elapsed_seconds,
+        credited_seconds=result.credited_seconds,
+        capped=result.capped,
+        rooms_cleared=result.rooms_cleared,
+        bosses_cleared=result.bosses_cleared,
+        gold_earned=result.gold_earned,
+        state=CanonicalGameStateResponse(**result.state),
+    )
+
+
+@app.post(
+    "/api/v1/game/constellation/unlock",
+    response_model=CanonicalGameStateResponse,
+)
+def unlock_canonical_constellation_node(
+    request: ConstellationUnlockRequest,
+    db: Session = Depends(get_db),
+) -> CanonicalGameStateResponse:
+    """Unlock the next valid run, recruitment, or permanent advancement node."""
+    try:
+        state = unlock_constellation_node(
+            db,
+            user_id=request.user_id,
+            node_code=request.node_code,
+            expected_revision=request.expected_revision,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except ConstellationRevisionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ConstellationNodeNotReadyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientGoldError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientPermanentCurrencyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return CanonicalGameStateResponse(**state)
+
+
+@app.get(
+    "/api/v1/game/rebirth/preview/{user_id}",
+    response_model=RebirthPreviewResponse,
+)
+def get_rebirth_preview(
+    user_id: str,
+    db: Session = Depends(get_db),
+) -> RebirthPreviewResponse:
+    """Preview exact reset/retain counts without changing game state."""
+    try:
+        result = preview_rebirth(db, user_id=user_id)
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    return RebirthPreviewResponse(**result)
+
+
+@app.post(
+    "/api/v1/game/rebirth/execute",
+    response_model=RebirthExecuteResponse,
+)
+def execute_canonical_rebirth(
+    request: RebirthExecuteRequest,
+    db: Session = Depends(get_db),
+) -> RebirthExecuteResponse:
+    """Execute a confirmed, revision-checked and idempotent rebirth."""
+    try:
+        result = execute_rebirth(
+            db,
+            user_id=request.user_id,
+            expected_revision=request.expected_revision,
+            rebirth_id=request.idempotency_key,
+        )
+    except GameStateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="game state is not initialized") from exc
+    except RebirthRevisionConflictError as exc:
+        raise HTTPException(status_code=409, detail="game state revision conflict") from exc
+    except RebirthNotReadyError as exc:
+        raise HTTPException(status_code=409, detail="run has no progress to reset") from exc
+    return RebirthExecuteResponse(
+        rebirth_id=result.rebirth_id,
+        already_executed=result.already_executed,
+        state=CanonicalGameStateResponse(**result.state),
+    )
+
+
+@app.get(
+    "/api/v1/game/overview/{user_id}",
+    response_model=GameOverviewResponse,
+    deprecated=True,
+)
 def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOverviewResponse:
-    """Return a read-only game projection from the user's current health data."""
+    """Legacy guild projection retained temporarily for old client compatibility."""
     status = get_health_i_status(user_id, db)
     overview = build_game_overview(
         level=status.level,
@@ -400,7 +774,11 @@ def get_game_overview(user_id: str, db: Session = Depends(get_db)) -> GameOvervi
     return GameOverviewResponse(**overview.to_dict())
 
 
-@app.post("/api/v1/game/adventures/settle", response_model=AdventureResponse)
+@app.post(
+    "/api/v1/game/adventures/settle",
+    response_model=AdventureResponse,
+    deprecated=True,
+)
 def settle_automatic_adventure(
     request: AdventureSettleRequest,
     db: Session = Depends(get_db),
@@ -445,6 +823,7 @@ def settle_automatic_adventure(
 @app.get(
     "/api/v1/game/adventures/history/{user_id}",
     response_model=AdventureHistoryResponse,
+    deprecated=True,
 )
 def get_adventure_history(
     user_id: str,
@@ -463,6 +842,7 @@ def get_adventure_history(
 @app.post(
     "/api/v1/game/adventures/{adventure_id}/claim",
     response_model=AdventureClaimResponse,
+    deprecated=True,
 )
 def claim_automatic_adventure(
     adventure_id: str,
@@ -482,6 +862,7 @@ def claim_automatic_adventure(
 @app.get(
     "/api/v1/game/facilities/training-grounds/{user_id}",
     response_model=TrainingGroundsResponse,
+    deprecated=True,
 )
 def get_training_grounds(
     user_id: str,
@@ -493,6 +874,7 @@ def get_training_grounds(
 @app.get(
     "/api/v1/game/heroes/{user_id}",
     response_model=HeroRosterResponse,
+    deprecated=True,
 )
 def get_hero_roster(
     user_id: str,

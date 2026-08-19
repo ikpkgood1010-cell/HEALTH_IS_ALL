@@ -7,6 +7,82 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('상세 문장 분석과 오늘 리뷰 응답을 앱 모델로 읽는다', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/v1/health/text/analyze') {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['text'], contains('삶은 계란'));
+        return http.Response(
+          jsonEncode({
+            'record_type': 'meal_log',
+            'status': 'NEEDS_CONFIRMATION',
+            'summary': '2개 식품 · 식단점수 75점',
+            'estimated': {
+              'totals': {'kcal': 482.5, 'protein_g': 21.2},
+              'totals_low': {'kcal': 430.0},
+              'totals_high': {'kcal': 530.0},
+              'meal_score': 75,
+            },
+            'confirmation_cards': [
+              {
+                'id': 'grams_boiled_egg',
+                'question': '삶은 계란 양을 확인할까요?',
+                'recommended_value': 150,
+                'options': [
+                  {'label': '150g', 'value': 150}
+                ],
+              }
+            ],
+            'reward_preview': {'base_exp': 30, 'health_essence': 1},
+            'storage_detail': {'analysis_version': 'meal_text_v1'},
+            'value': 482.5,
+            'items': [],
+            'blocks': [],
+            'sources': ['국가표준식품성분표'],
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      if (request.url.path == '/api/v1/health/review/daily/journey_test') {
+        return http.Response(
+          jsonEncode({
+            'meal_count': 1,
+            'workout_count': 0,
+            'nutrition': {'kcal': 482.5},
+            'nutrition_low': {'kcal': 430.0},
+            'nutrition_high': {'kcal': 530.0},
+            'meal_score': 75,
+            'workout_minutes': 0,
+            'exp_earned': 30,
+            'health_essence_earned': 1,
+            'meals': [],
+            'workouts': [],
+            'disclaimer': '추정값',
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('{}', 404);
+    });
+    final api =
+        HealthIApiClient(baseUrl: 'https://example.test', client: client);
+    final analysis = await api.analyzeHealthText(
+      userId: 'journey_test',
+      recordType: 'meal_log',
+      text: '삶은 계란 3개를 먹었어',
+      mealType: '아침',
+    );
+    final review = await api.fetchDailyHealthReview('journey_test');
+
+    expect(analysis.value, 482.5);
+    expect(analysis.confirmationCards.single['recommended_value'], 150);
+    expect(review.nutrition['kcal'], 482.5);
+    expect(review.nutritionLow['kcal'], 430.0);
+    api.dispose();
+  });
+
   test('실패한 건강 기록 재시도는 같은 UUID를 사용한다', () async {
     var attempts = 0;
     final keys = <String>[];

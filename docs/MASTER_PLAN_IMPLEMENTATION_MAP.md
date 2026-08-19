@@ -1,25 +1,22 @@
 # 마스터 기획 구현 대응표
 
+기준일: 2026-08-13
+
 | 기획 항목 | 현재 상태 | 실제 경로 | 다음 확장 |
 |---|---|---|---|
-| 익명 MVP | 완료 | `lib/anonymous_user_repository.dart`, `lib/main.dart` | 계정 이전 정책 확정 후 로그인 |
-| 하단 탭 5개 | 완료 | `lib/main_navigation_screen.dart` | 없음 |
-| 토스형 건강 UI | 1차 완료 | `lib/app_theme.dart`, `lib/home_screen.dart` | 실기기 접근성 QA |
-| 운동·식단 기록 | 완료 | `lib/health_tab_screens.dart`, `lib/diet_screen.dart`, `backend/main.py` | 수분 전용 입력 UX 고도화 |
-| 건강 기록 멱등성 | 완료 | `lib/idempotency_key.dart`, `backend/data_idempotency_engine.py`, `backend/main.py` | 앱 재시작을 넘는 오프라인 큐 연동 |
-| HBI 공식 | 완료 | `backend/game_balance_engine.py`, `lib/game_balance.dart` | 수면·스트레스 데이터 연동 |
-| 운동 27종·강도 분리 | 완료 | `backend/exercise_catalog.py`, `lib/exercise_catalog.dart` | 필요 시 DB 카탈로그화 |
-| 근육 회복 계산 | 완료 | `backend/recovery_calculator.py`, `backend/main.py` | 저장·위젯 연동 |
-| 건강 기반 길드 | 2차 완료 | `lib/guild_screen.dart` | 3D 이미지 적용·제작·장기 이벤트 |
-| 자동 모험 12시간·70% | 완료 | `backend/adventure_service.py`, `backend/main.py` | 과거 구간 누적 정책 검토 |
-| 보상 중복 방지 | 완료 | `backend/adventure_service.py` | 운영 동시성 관측 |
-| 훈련장 1종 | 외형 성장 포함 완료 | `backend/adventure_service.py`, `lib/guild_screen.dart` | 시설 효과는 경제 검증 후 추가 |
-| 던전 가중치·안전 규칙 | 결과 다양화 완료 | `backend/game_balance_engine.py`, `backend/adventure_service.py`, `lib/guild_screen.dart` | 장기 전투 애니메이션·보스 패턴 |
-| 이야기 용사 합류 | 첫 용사 완료 | `backend/adventure_service.py`, `backend/main.py`, `lib/guild_screen.dart` | 스테이지·Quest·이벤트 용사 확장 |
-| 게임 UI 아트 방향 | 기준 확정 | `docs/GAME_UI_ART_DIRECTION.md`, `lib/guild_screen.dart` | 실제 SD 3D 캐릭터·장면 교체 |
-| 모험 회상 | 최근 5개 완료 | `backend/adventure_service.py`, `backend/main.py`, `lib/guild_screen.dart` | 앨범·상세 이야기 확장 |
-| 기억 조각·환생 | 수식·해금 기준만 반영 | 게임 엔진·길드 화면 | 초기화·복구 검증 후 실행 기능 |
-| 살아있는 길드·보스 | 방향 확정 | 기획 문서 | 전투·콘텐츠·서버 구현 |
-| 광장·날씨·지역 탐험 | 방향 확정 | 기획 문서 | 단계별 구현 |
+| 익명 MVP | 완료 | `lib/anonymous_user_repository.dart`, `lib/main.dart` | 이전·복구 정책 뒤 로그인 |
+| 건강 하단 4탭 | 완료 | `lib/main_navigation_screen.dart` | 실기기 QA |
+| 홈 상단 게임 입장 | 완료 | `lib/home_screen.dart` | 최종 배너 에셋 연결 |
+| 게임 내부 허브 | 실제 상태 연결 | `lib/game_screen.dart`, `lib/api_data_provider.dart` | 콘텐츠별 실제 기능 확장 |
+| 6인 직군·자동 전투 규칙 | 서버시간·멱등 정산·Flutter 상태 완료(DB 미적용) | `backend/idle_battle_engine.py`, `backend/idle_game_service.py`, `lib/game_screen.dart` | 노드 비용 연결 후 30회 환생 경제 검증 |
+| 별자리 7계층·0계층 영입 노드 5개·1~6계층 전직 노드 6개 | 0계층 경로·확정 영입과 1~6계층 개별 전직 완료(DB 미적용) | `backend/constellation_economy.py`, `backend/advancement_economy.py`, `lib/game_screen.dart` | 세부 전직 경로·스킬 효과 연결 |
+| 정령 확정 부화 | 화면 기준 완료 | `lib/game_screen.dart` | 부화 진행·저장 구현 |
+| 스킬·아바타 확정 제작 | 화면 기준 완료 | `lib/game_screen.dart` | 제작식·재료 구현 |
+| 환생 초기화·보존 | 100층 조건·별의 파편 감사·30회 후보 시뮬레이션 완료 | `backend/idle_game_service.py`, `scripts/simulate_rebirth_economy.py` | DB 적용 후 실행 UI 승인 |
+| 건강 기록→영구 성장 | 기록별·일별 상한, 멱등 감사, 과거 기록 소급 완료(DB 미적용) | `backend/health_essence_service.py`, `migrations/202608140002_health_essence_rewards.sql` | 실제 스키마 적용·운영 수치 검증 |
+| 건강 기록·HBI | 기존 완료 | `backend/main.py`, `backend/game_balance_engine.py` | 게임 파생 정수 어댑터 |
+| 기존 길드·12시간 모험 | SUPERSEDED | deprecated API와 미사용 `lib/guild_screen.dart` | 데이터 보존 확인 뒤 제거 |
+| 최종 게임 아트 | 미적용 | `docs/GAME_ASSET_AUDIT.md` | Stitch P0 에셋 제작·검수 |
 
-`완료`는 현재 익명 MVP에서 실행 가능한 범위를 뜻하며 장기 기획 전체가 끝났다는 뜻은 아니다. 마스터 프롬프트를 우선 기준으로 삼고, 없는 항목은 개발기획 1~42와 검토 자료를 따른다.
+`완료`는 전체 게임 완성을 뜻하지 않는다. 현재는 새 방향이 기존 실행 구조와 다시
+충돌하지 않도록 정보구조, 표시 규칙, 읽기 전용 API 계약을 고정한 단계다.

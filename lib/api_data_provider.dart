@@ -31,11 +31,11 @@ class ApiDataProvider extends ChangeNotifier {
   String _dialogue = '오늘 하루도 차근차근 시작해볼까요?';
 
   double _consumedCalories = 0;
-  int _targetCalories = 2000;
+  final int _targetCalories = 2000;
   double _workoutMinutes = 0;
-  int _targetWorkoutMinutes = 45;
+  final int _targetWorkoutMinutes = 45;
   double _waterLiters = 0;
-  double _targetWaterLiters = 2.0;
+  final double _targetWaterLiters = 2.0;
   int _streakDays = 0;
 
   bool _isLoading = false;
@@ -47,6 +47,12 @@ class ApiDataProvider extends ChangeNotifier {
   List<HeroCompanion> _heroRoster = const [];
   bool _isGuildLoading = false;
   String? _guildError;
+  CanonicalGameState? _canonicalGame;
+  IdleBattleSettlement? _lastBattleSettlement;
+  String? _pendingBattleSettlementKey;
+  RebirthPreview? _rebirthPreview;
+  bool _isGameLoading = false;
+  String? _gameError;
   final Map<String, String> _pendingRecordKeys = {};
 
   String get healthIName => _healthIName;
@@ -74,6 +80,11 @@ class ApiDataProvider extends ChangeNotifier {
   List<HeroCompanion> get heroRoster => _heroRoster;
   bool get isGuildLoading => _isGuildLoading;
   String? get guildError => _guildError;
+  CanonicalGameState? get canonicalGame => _canonicalGame;
+  IdleBattleSettlement? get lastBattleSettlement => _lastBattleSettlement;
+  RebirthPreview? get rebirthPreview => _rebirthPreview;
+  bool get isGameLoading => _isGameLoading;
+  String? get gameError => _gameError;
 
   /// 서버에서 현재 상태를 불러와 화면에 반영한다.
   /// 화면 진입 시(initState) 호출하도록 설계되었다.
@@ -98,6 +109,93 @@ class ApiDataProvider extends ChangeNotifier {
       _lastError = '서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Initializes the persistent game shell once, then loads a read-only rebirth preview.
+  Future<void> refreshGame() async {
+    _isGameLoading = true;
+    _gameError = null;
+    notifyListeners();
+    try {
+      _canonicalGame = await _api.initializeCanonicalGame(userId);
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+    } catch (_) {
+      _gameError = '게임 서버 상태를 불러오지 못했어요. 기획 미리보기로 표시합니다.';
+    } finally {
+      _isGameLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> selectInitialHero(String heroCode) async {
+    final current = _canonicalGame;
+    if (current == null || current.initialHeroSelected) return;
+    _isGameLoading = true;
+    _gameError = null;
+    notifyListeners();
+    try {
+      _canonicalGame = await _api.selectInitialHero(
+        userId: userId,
+        heroCode: heroCode,
+        expectedRevision: current.revision,
+      );
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+    } catch (_) {
+      _gameError = '첫 용사를 선택하지 못했어요. 잠시 후 다시 시도해주세요.';
+    } finally {
+      _isGameLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Settles elapsed automatic-battle time using one retry-stable UUID.
+  Future<void> settleBattle() async {
+    final current = _canonicalGame;
+    if (current == null || !current.initialHeroSelected || _isGameLoading) {
+      return;
+    }
+    _isGameLoading = true;
+    _gameError = null;
+    _pendingBattleSettlementKey ??= newIdempotencyKey();
+    notifyListeners();
+    try {
+      final result = await _api.settleIdleBattle(
+        userId: userId,
+        idempotencyKey: _pendingBattleSettlementKey!,
+      );
+      _lastBattleSettlement = result;
+      _canonicalGame = result.state;
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+      _pendingBattleSettlementKey = null;
+    } catch (_) {
+      // Keep the key: if the server committed before a timeout, retrying must
+      // return that exact settlement instead of crediting the window twice.
+      _gameError = '자동 전투 정산을 불러오지 못했어요. 다시 열면 안전하게 재시도합니다.';
+    } finally {
+      _isGameLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> unlockConstellationNode(String nodeCode) async {
+    final current = _canonicalGame;
+    if (current == null || _isGameLoading) return;
+    _isGameLoading = true;
+    _gameError = null;
+    notifyListeners();
+    try {
+      _canonicalGame = await _api.unlockConstellationNode(
+        userId: userId,
+        nodeCode: nodeCode,
+        expectedRevision: current.revision,
+      );
+      _rebirthPreview = await _api.fetchRebirthPreview(userId);
+    } catch (_) {
+      _gameError = '필요 재화가 부족하거나 다른 진행이 먼저 반영됐어요. 상태를 새로 확인해주세요.';
+    } finally {
+      _isGameLoading = false;
       notifyListeners();
     }
   }
@@ -156,6 +254,56 @@ class ApiDataProvider extends ChangeNotifier {
     } finally {
       _isGuildLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<HealthTextAnalysis?> analyzeDetailedText({
+    required String recordType,
+    required String text,
+    String? mealType,
+    Map<String, double> answers = const {},
+  }) async {
+    _lastError = null;
+    try {
+      return await _api.analyzeHealthText(
+        userId: userId,
+        recordType: recordType,
+        text: text,
+        mealType: mealType,
+        answers: answers,
+      );
+    } catch (_) {
+      _lastError = '문장을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<HealthRecordResult?> logAnalyzedRecord(
+    HealthTextAnalysis analysis,
+  ) {
+    return _recordActivity(
+      recordType: analysis.recordType,
+      value: analysis.value,
+      detailData: analysis.storageDetail,
+      localApply: () {
+        if (analysis.recordType == 'meal_log') {
+          _consumedCalories += analysis.value;
+        } else if (analysis.recordType == 'workout_log') {
+          _workoutMinutes += analysis.value;
+        }
+      },
+    );
+  }
+
+  Future<DailyHealthReview?> fetchDailyHealthReview() async {
+    _lastError = null;
+    try {
+      return await _api.fetchDailyHealthReview(userId);
+    } catch (_) {
+      _lastError = '오늘 상세 리뷰를 불러오지 못했습니다.';
+      notifyListeners();
+      return null;
     }
   }
 
@@ -254,6 +402,9 @@ class ApiDataProvider extends ChangeNotifier {
       notifyListeners();
       // 서버 기준 최신 집계(오늘자 칼로리/운동/수분/streak/감정상태)로 동기화
       await refreshStatus();
+      if (result.healthEssenceEarned > 0 && _canonicalGame != null) {
+        await refreshGame();
+      }
       return result;
     } catch (e) {
       _lastError = '기록 저장에 실패했습니다. 네트워크 상태를 확인해주세요.';

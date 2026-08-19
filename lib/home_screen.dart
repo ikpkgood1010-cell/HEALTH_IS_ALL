@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'api_data_provider.dart';
 import 'app_theme.dart';
 import 'game_balance.dart';
+import 'game_screen.dart';
 
 /// Health-first dashboard for the anonymous MVP.
 class HomeScreen extends StatefulWidget {
@@ -25,8 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final data = context.watch<ApiDataProvider>();
-    final guild = GuildProjection.fromHealth(
-      level: data.level,
+    final healthBalance = HealthBalanceProjection.fromHealth(
       calories: data.consumedCalories,
       targetCalories: data.targetCalories,
       workoutMinutes: data.workoutMinutes,
@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('HEALTH IS ALL'),
+        title: const Text('HEALTH IS ALL : 건강이 전부다 !!'),
         actions: [
           if (data.isLoading)
             const Padding(
@@ -79,7 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
             const SizedBox(height: 20),
-            _BalanceCard(projection: guild),
+            const _GameEntryCard(),
+            const SizedBox(height: 16),
+            _BalanceCard(projection: healthBalance),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -142,8 +144,70 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+class _GameEntryCard extends StatelessWidget {
+  const _GameEntryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('home-game-entry'),
+      color: const Color(0xFF263659),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const GameScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.castle_rounded, color: Color(0xFFFFD36E)),
+                  SizedBox(width: 8),
+                  Text(
+                    '건강이 전부다 !!',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800),
+                  ),
+                  Spacer(),
+                  Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                '6명의 용사와 자동으로 탑을 오르세요',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '모든 게임 기능은 이곳으로 입장한 뒤 확인할 수 있어요.',
+                style: TextStyle(color: Color(0xFFD8DEEF), height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.tonalIcon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GameScreen()),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('게임으로 입장'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BalanceCard extends StatelessWidget {
-  final GuildProjection projection;
+  final HealthBalanceProjection projection;
 
   const _BalanceCard({required this.projection});
 

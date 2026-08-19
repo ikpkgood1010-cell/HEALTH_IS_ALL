@@ -4,6 +4,7 @@ import 'api_data_provider.dart';
 import 'app_theme.dart';
 import 'diet_screen.dart';
 import 'workout_screen.dart';
+import 'daily_health_review_screen.dart';
 
 class ExerciseTabScreen extends StatelessWidget {
   const ExerciseTabScreen({super.key});
@@ -18,10 +19,12 @@ class ExerciseTabScreen extends StatelessWidget {
       current: data.workoutMinutes,
       accent: AppColors.secondary500,
       icon: Icons.directions_run,
-      message: '운동 종류·강도·시간을 기록하면 길드의 훈련장이 자라요.',
+      message: '운동 종류·강도·시간을 기록하면 개인 목표와 회복 상태를 함께 확인할 수 있어요.',
       buttonLabel: '운동 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const WorkoutScreen())),
+      onReview: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DailyHealthReviewScreen())),
     );
   }
 }
@@ -39,10 +42,12 @@ class DietTabScreen extends StatelessWidget {
       current: data.consumedCalories,
       accent: AppColors.primary500,
       icon: Icons.restaurant,
-      message: '식사를 기록하면 영양 균형과 길드 식당의 성장을 함께 확인해요.',
+      message: '식사를 기록하면 오늘의 영양 균형과 목표 달성 흐름을 함께 확인해요.',
       buttonLabel: '식단 기록하기',
       onPressed: () => Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const DietScreen())),
+      onReview: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DailyHealthReviewScreen())),
     );
   }
 }
@@ -57,6 +62,7 @@ class _RecordTab extends StatelessWidget {
   final String message;
   final String buttonLabel;
   final VoidCallback onPressed;
+  final VoidCallback onReview;
 
   const _RecordTab(
       {required this.title,
@@ -67,7 +73,8 @@ class _RecordTab extends StatelessWidget {
       required this.icon,
       required this.message,
       required this.buttonLabel,
-      required this.onPressed});
+      required this.onPressed,
+      required this.onReview});
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +116,11 @@ class _RecordTab extends StatelessWidget {
               onPressed: onPressed,
               icon: const Icon(Icons.add),
               label: Text(buttonLabel)),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+              onPressed: onReview,
+              icon: const Icon(Icons.analytics_outlined),
+              label: const Text('오늘 전체 상세 리뷰')),
         ],
       ),
     );

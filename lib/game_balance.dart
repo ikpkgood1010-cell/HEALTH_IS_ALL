@@ -10,6 +10,56 @@ double calculateHbi(List<double> scores) {
   return double.parse((minimum * 0.6 + average * 0.4).toStringAsFixed(1));
 }
 
+class HealthBalanceProjection {
+  final double hbi;
+  final Map<String, double> breakdown;
+  final String environmentMessage;
+
+  const HealthBalanceProjection({
+    required this.hbi,
+    required this.breakdown,
+    required this.environmentMessage,
+  });
+
+  factory HealthBalanceProjection.fromHealth({
+    required int calories,
+    required int targetCalories,
+    required int workoutMinutes,
+    required int targetWorkoutMinutes,
+    required double waterLiters,
+    required double targetWaterLiters,
+    required int streakDays,
+  }) {
+    final activity =
+        _score(workoutMinutes / math.max(targetWorkoutMinutes, 1) * 100);
+    final nutrition = _score(100 -
+        (calories - targetCalories).abs() / math.max(targetCalories, 1) * 100);
+    final hydration =
+        _score(waterLiters / math.max(targetWaterLiters, 0.1) * 100);
+    final consistency = _score(streakDays / 7 * 100);
+    final hbi = calculateHbi([activity, nutrition, hydration, consistency]);
+
+    final message = switch (hbi) {
+      >= 80 => '오늘의 건강 균형이 아주 안정적이에요.',
+      >= 60 => '좋은 흐름이에요. 부족한 한 영역만 가볍게 챙겨보세요.',
+      >= 40 => '천천히 균형을 되찾고 있어요.',
+      _ => '쉬어도 괜찮아요. 회복 후 다시 이어가면 됩니다.',
+    };
+
+    return HealthBalanceProjection(
+      hbi: hbi,
+      breakdown: {
+        '운동': activity,
+        '식단': nutrition,
+        '수분': hydration,
+        '꾸준함': consistency,
+      },
+      environmentMessage: message,
+    );
+  }
+}
+
+@Deprecated('Legacy 12-hour guild projection. Use HealthBalanceProjection.')
 class GuildProjection {
   final double hbi;
   final Map<String, double> breakdown;

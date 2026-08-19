@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:flutter_test/flutter_test.dart';
@@ -10,8 +12,6 @@ import 'package:provider/provider.dart';
 
 void main() {
   Widget createWidgetUnderTest() {
-    var adventureSettled = false;
-    var heroJoined = false;
     final apiClient = HealthIApiClient(
       client: MockClient((request) async {
         if (request.url.path.contains('/health-i/status/')) {
@@ -28,96 +28,114 @@ void main() {
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
-        if (request.url.path == '/api/v1/game/adventures/settle') {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          adventureSettled = true;
+        if (request.url.path == '/api/v1/game/state/initialize') {
           return http.Response(
-            '{"adventure_id":"adv-test","user_id":"anon_test",'
-            '"window_start":"2026-08-10T00:00:00",'
-            '"window_end":"2026-08-10T12:00:00","vitality":40,'
-            '"gross_guild_coins":28,"offline_efficiency":0.7,'
-            '"hbi_score":52.5,"tower_floor":4,"rooms":['
-            '{"position":1,"room_type":"COMBAT","title":"안개 길목",'
-            '"outcome":"활력으로 길을 열었어요."},'
-            '{"position":2,"room_type":"EVENT","title":"반짝이는 샘",'
-            '"outcome":"작은 발견을 했어요."},'
-            '{"position":3,"room_type":"ELITE","title":"수호자의 문",'
-            '"outcome":"관문을 넘었어요."},'
-            '{"position":4,"room_type":"REST","title":"회복의 모닥불",'
-            '"outcome":"숨을 골랐어요."},'
-            '{"position":5,"room_type":"BOSS","title":"층의 수호자",'
-            '"outcome":"모험을 마쳤어요."}],"claimed":false}',
+            '{"initialized":true,"phase":"ONBOARDING",'
+            '"user_id":"anon_test","revision":0,"run_number":1,'
+            '"tower_floor":1,"highest_floor":1,"room_position":1,'
+            '"rooms_per_floor":6,"gold":0,"health_essence":0,'
+            '"star_shards":0,"transcendence_points":0,'
+            '"initial_hero_selected":false,'
+            '"large_node_slots_by_layer":{"0":5,"1":6,"2":6,"3":6,"4":6,"5":6,"6":6},'
+            '"heroes":['
+            '{"hero_code":"TANKER","role_name":"탱커","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"WARRIOR","role_name":"전사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"MAGE","role_name":"마법사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"ARCHER","role_name":"궁수","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"ROGUE","role_name":"도적","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0},'
+            '{"hero_code":"HEALER","role_name":"치유사","recruited":false,"advancement_tier":0,"appearance_code":"BASE","active_skill_slots":0}],'
+            '"node_counts":{"SMALL":0,"MEDIUM":0,"LARGE":0}}',
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
-        if (request.url.path.contains('/game/adventures/history/')) {
-          if (!adventureSettled) {
+        if (request.url.path == '/api/v1/game/heroes/select-initial') {
+          return http.Response(
+            jsonEncode(_selectedGameState()),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path == '/api/v1/game/battle/settle') {
+          final state = _selectedGameState()
+            ..['tower_floor'] = 2
+            ..['room_position'] = 3
+            ..['gold'] = 128
+            ..['revision'] = 2;
+          return http.Response(
+            jsonEncode({
+              'settlement_id': 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              'already_settled': false,
+              'elapsed_seconds': 600,
+              'credited_seconds': 600,
+              'capped': false,
+              'rooms_cleared': 8,
+              'bosses_cleared': 1,
+              'gold_earned': 128,
+              'state': state,
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path == '/api/v1/game/constellation/unlock') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          final state = _selectedGameState()
+            ..['revision'] = 2
+            ..['gold'] = 3500;
+          if ((body['node_code'] as String).startsWith('L1_ADVANCE_')) {
+            state['health_essence'] = 0;
+            final heroes = state['heroes'] as List<dynamic>;
+            final mage = heroes
+                .cast<Map<String, dynamic>>()
+                .firstWhere((hero) => hero['hero_code'] == 'MAGE');
+            mage
+              ..['advancement_tier'] = 1
+              ..['appearance_code'] = 'MAGE_TIER_1'
+              ..['active_skill_slots'] = 1;
+            final layers = state['constellation_layers'] as List<dynamic>;
+            final layerOne = layers[1] as Map<String, dynamic>;
+            final nodes = layerOne['nodes'] as List<dynamic>;
+            final mageNode = nodes
+                .cast<Map<String, dynamic>>()
+                .firstWhere((node) => node['hero_code'] == 'MAGE');
+            mageNode
+              ..['state'] = 'UNLOCKED'
+              ..['advancement_tier'] = 1
+              ..['can_afford'] = false;
             return http.Response(
-              '{"items":[]}',
+              jsonEncode(state),
               200,
               headers: {'content-type': 'application/json; charset=utf-8'},
             );
           }
+          final branches = state['recruitment_branches'] as List<dynamic>;
+          final tanker = branches.first as Map<String, dynamic>;
+          tanker
+            ..['unlocked_nodes'] = 1
+            ..['small_unlocked'] = 1
+            ..['gold_spent'] = 1500
+            ..['next_node'] = {
+              'node_code': 'L0_TANKER_S02',
+              'node_size': 'SMALL',
+              'sequence': 2,
+              'gold_cost': 1730,
+              'title': '기초 단련 2',
+              'effect_label': '이번 회차 파티 전투력 +2%',
+            };
           return http.Response(
-            '{"items":[{"adventure_id":"adv-test","user_id":"anon_test",'
-            '"window_start":"2026-08-10T00:00:00",'
-            '"window_end":"2026-08-10T12:00:00","vitality":40,'
-            '"gross_guild_coins":28,"offline_efficiency":0.7,'
-            '"hbi_score":52.5,"tower_floor":4,"rooms":['
-            '{"position":1,"room_type":"COMBAT","title":"안개 길목",'
-            '"outcome":"활력으로 길을 열었어요."},'
-            '{"position":5,"room_type":"BOSS","title":"층의 수호자",'
-            '"outcome":"모험을 마쳤어요."}],"claimed":true}]}',
+            jsonEncode(state),
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
         }
-        if (request.url.path.contains('/facilities/training-grounds/')) {
+        if (request.url.path.contains('/api/v1/game/rebirth/preview/')) {
           return http.Response(
-            '{"code":"TRAINING_GROUNDS","name":"훈련장","level":2,'
-            '"total_invested":120,"current_level_progress":20,'
-            '"next_level_cost":150,"progress_ratio":0.1333,'
-            '"guild_coin_balance":80,"description":"기초 시설",'
-            '"stage_code":"FIELD_CAMP","stage_name":"들판 훈련터",'
-            '"stage_message":"건강한 모험을 기억하고 있어요.",'
-            '"next_milestone_level":3}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.contains('/game/heroes/')) {
-          return http.Response(
-            heroJoined
-                ? '{"items":[{"hero_code":"FOREST_SCOUT_ARU",'
-                    '"name":"아루","title":"새싹 길잡이",'
-                    '"role":"탐험 용사","element":"FOREST",'
-                    '"rarity":"STORY",'
-                    '"join_source":"FIRST_ADVENTURE_CLAIM",'
-                    '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
-                    '"gameplay_effect":"NONE",'
-                    '"joined_at":"2026-08-10T12:00:00",'
-                    '"source_adventure_id":"adv-test"}]}'
-                : '{"items":[]}',
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (request.url.path.endsWith('/claim')) {
-          heroJoined = true;
-          return http.Response(
-            '{"adventure_id":"adv-test","claim_id":"claim-test",'
-            '"already_claimed":false,"gross_guild_coins":28,'
-            '"facility_invested":5,"guild_coins_received":23,'
-            '"joined_hero":{"hero_code":"FOREST_SCOUT_ARU",'
-            '"name":"아루","title":"새싹 길잡이",'
-            '"role":"탐험 용사","element":"FOREST",'
-            '"rarity":"STORY",'
-            '"join_source":"FIRST_ADVENTURE_CLAIM",'
-            '"join_message":"첫 모험을 안전하게 마친 길드에 합류했어요.",'
-            '"gameplay_effect":"NONE",'
-            '"joined_at":"2026-08-10T12:00:00",'
-            '"source_adventure_id":"adv-test"}}',
+            '{"user_id":"anon_test","revision":0,"can_rebirth":false,'
+            '"next_run_number":2,"reset":{"tower_floor":1,'
+            '"room_position":1,"gold":0,"small_nodes":0,"medium_nodes":0},'
+            '"retain":{"heroes":6,"recruited_heroes":0,"large_nodes":0,'
+            '"health_essence":0,"star_shards":0,"transcendence_points":0}}',
             200,
             headers: {'content-type': 'application/json; charset=utf-8'},
           );
@@ -137,11 +155,11 @@ void main() {
     );
   }
 
-  testWidgets('확정된 하단 탭 5개를 순서대로 표시한다', (tester) async {
+  testWidgets('건강 앱 하단 탭 4개를 순서대로 표시한다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    for (final label in ['홈', '운동', '식단', '길드', '마이']) {
+    for (final label in ['홈', '운동', '식단', '마이']) {
       expect(
         find.descendant(
           of: find.byType(NavigationBar),
@@ -150,43 +168,294 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(find.byType(NavigationDestination), findsNWidgets(5));
+    expect(find.text('길드'), findsNothing);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
   });
 
-  testWidgets('길드 탭에서 자동 모험과 훈련장을 표시하고 보상을 받는다', (tester) async {
+  testWidgets('홈 상단에서 게임에 입장하고 환생 보존 규칙을 확인한다', (tester) async {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.castle_outlined));
+    expect(find.byKey(const Key('home-game-entry')), findsOneWidget);
+    await tester.tap(find.text('게임으로 입장'));
     await tester.pumpAndSettle();
 
-    expect(
-        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-        3);
-    await tester.scrollUntilVisible(find.text('자동 모험'), 260);
+    expect(find.byKey(const Key('game-hub')), findsOneWidget);
+    expect(find.text('첫 용사 영입을 기다리고 있어요'), findsOneWidget);
+    expect(find.byKey(const Key('initial-hero-selector')), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('game-hub')),
+      const Offset(0, -500),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('자동 모험'), findsOneWidget);
-    expect(find.text('모험대가 돌아왔어요'), findsOneWidget);
-    expect(find.text('탑 4층 탐험 경로'), findsOneWidget);
-    expect(find.text('1. 안개 길목'), findsOneWidget);
-    expect(find.text('5. 층의 수호자'), findsOneWidget);
+    expect(find.text('나의 6인 파티'), findsOneWidget);
+    expect(find.text('탱커'), findsWidgets);
+    expect(find.text('치유사'), findsWidgets);
+    await tester.drag(
+      find.byKey(const Key('game-hub')),
+      const Offset(0, -1000),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('마을·길드'), findsOneWidget);
+    await tester.tap(find.text('환생').first);
+    await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('안전하게 보상 받기'));
+    expect(find.byKey(const Key('rebirth-rules')), findsOneWidget);
+    expect(find.text('회차마다 초기화'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('rebirth-rules')),
+      const Offset(0, -700),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('안전하게 보상 받기'));
-    await tester.pumpAndSettle();
-    expect(find.text('보상을 받았어요'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('나의 원정대'), -300);
-    await tester.pumpAndSettle();
-    expect(find.text('새싹 길잡이 · 아루'), findsOneWidget);
-
-    await tester.scrollUntilVisible(find.text('길드 시설'), 300);
-    await tester.pumpAndSettle();
-    expect(find.text('길드 시설'), findsOneWidget);
-    expect(find.text('들판 훈련터'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('지난 모험 회상'), 300);
-    await tester.pumpAndSettle();
-    expect(find.text('지난 모험 회상'), findsOneWidget);
-    expect(find.text('탑 4층 · 층의 수호자'), findsOneWidget);
+    expect(find.textContaining('소형 노드 0개'), findsOneWidget);
+    expect(find.text('영구 보존'), findsOneWidget);
+    expect(find.textContaining('최고 전직 차수·전직 외형'), findsOneWidget);
   });
+
+  testWidgets('첫 용사 1명을 확인 후 무료 영입한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    expect(find.text('마법사를 첫 용사로 선택할까요?'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('initial-hero-selector')), findsNothing);
+    expect(find.text('1명의 용사가 다음 적을 향해 이동합니다.'), findsOneWidget);
+  });
+
+  testWidgets('승인 배경 위에 0계층 5개와 전직 계층 6개를 표시한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('constellation-board')), findsOneWidget);
+    expect(find.byKey(const Key('constellation-node-0-MAGE')), findsNothing);
+    for (final code in ['TANKER', 'WARRIOR', 'ARCHER', 'ROGUE', 'HEALER']) {
+      expect(find.byKey(Key('constellation-node-0-$code')), findsOneWidget);
+    }
+
+    await tester.tap(find.byKey(const Key('constellation-layer-1')));
+    await tester.pumpAndSettle();
+    for (final code in [
+      'TANKER',
+      'WARRIOR',
+      'MAGE',
+      'ARCHER',
+      'ROGUE',
+      'HEALER'
+    ]) {
+      expect(find.byKey(Key('constellation-node-1-$code')), findsOneWidget);
+    }
+    expect(find.text('무료 첫 용사 · 마법사'), findsOneWidget);
+  });
+
+  testWidgets('자동 전투 진입 시 서버 정산 결과와 현재 방을 표시한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('전투 화면 보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('idle-battle-runtime')), findsOneWidget);
+    expect(find.text('2층 · 3번 방'), findsOneWidget);
+    expect(find.byKey(const Key('battle-settlement-summary')), findsOneWidget);
+    expect(find.textContaining('방 8개'), findsOneWidget);
+    expect(find.textContaining('골드 +128'), findsOneWidget);
+  });
+
+  testWidgets('0계층 회차 노드를 골드로 해금하고 진행도를 갱신한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('constellation-detail')),
+      const Offset(0, -850),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('recruitment-path-list')), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('unlock-run-node-TANKER')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unlock-run-node-TANKER')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('소형 1/6 · 중형 0/2 · 사용 1500 골드'), findsOneWidget);
+    expect(find.textContaining('기초 단련 2'), findsOneWidget);
+  });
+
+  testWidgets('건강 정수로 용사별 1차 전직을 확정 해금한다', (tester) async {
+    await tester.pumpWidget(createWidgetUnderTest());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('게임으로 입장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('initial-hero-MAGE')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-initial-hero')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별자리').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('constellation-layer-1')));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('constellation-detail')),
+      const Offset(0, -700),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('advance-hero-1-MAGE')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('마법사 · 원소 마도사'), findsOneWidget);
+    expect(find.text('건강 정수 12 · 별 조각 0'), findsWidgets);
+    await tester.tap(find.byKey(const Key('advance-hero-1-MAGE')));
+    await tester.pumpAndSettle();
+    expect(find.text('전직 완료'), findsWidgets);
+  });
+}
+
+Map<String, dynamic> _selectedGameState() {
+  const roles = [
+    ('TANKER', '탱커'),
+    ('WARRIOR', '전사'),
+    ('MAGE', '마법사'),
+    ('ARCHER', '궁수'),
+    ('ROGUE', '도적'),
+    ('HEALER', '치유사'),
+  ];
+  Map<String, dynamic> node((String, String) role, int layer) => {
+        'node_code': layer == 0
+            ? 'L0_RECRUIT_${role.$1}'
+            : 'L${layer}_ADVANCE_${role.$1}',
+        'layer': layer,
+        'hero_code': role.$1,
+        'role_name': role.$2,
+        'node_kind': layer == 0 ? 'RECRUIT' : 'ADVANCEMENT',
+        'state': layer == 1 && role.$1 == 'MAGE' ? 'NEXT' : 'LOCKED',
+        'advancement_tier': 0,
+        'advancement_name': layer == 1 && role.$1 == 'MAGE' ? '원소 마도사' : null,
+        'health_essence_cost': layer == 0 ? 0 : 12 * (1 << (layer - 1)),
+        'star_shard_cost': layer <= 1 ? 0 : 2 * (layer - 1),
+        'can_afford': layer == 1 && role.$1 == 'MAGE',
+        'effect_label': layer == 0 ? null : '$layer차 전직 외형·패시브 영구 보존',
+      };
+  return {
+    'initialized': true,
+    'phase': 'IDLE_BATTLE',
+    'user_id': 'anon_test',
+    'revision': 1,
+    'run_number': 1,
+    'tower_floor': 1,
+    'highest_floor': 1,
+    'room_position': 1,
+    'rooms_per_floor': 6,
+    'gold': 5000,
+    'battle': {
+      'status': 'RUNNING',
+      'server_anchor_at': '2026-08-14T00:10:00Z',
+      'offline_cap_seconds': 43200,
+      'party_power': 100,
+      'run_power_multiplier': 1.0,
+      'current_room_kind': 'NORMAL',
+      'room_progress_seconds': 15,
+      'room_required_seconds': 45,
+    },
+    'health_essence': 12,
+    'star_shards': 0,
+    'transcendence_points': 0,
+    'initial_hero_selected': true,
+    'starter_hero_code': 'MAGE',
+    'large_node_slots_by_layer': {
+      '0': 5,
+      for (var layer = 1; layer <= 6; layer++) '$layer': 6,
+    },
+    'constellation_layers': [
+      {
+        'layer': 0,
+        'title': '용사 영입',
+        'node_count': 5,
+        'nodes': [
+          for (final role in roles.where((role) => role.$1 != 'MAGE'))
+            node(role, 0)
+        ],
+      },
+      for (var layer = 1; layer <= 6; layer++)
+        {
+          'layer': layer,
+          'title': '$layer차 전직',
+          'node_count': 6,
+          'nodes': [for (final role in roles) node(role, layer)],
+        },
+    ],
+    'recruitment_branches': [
+      for (final role in roles.where((role) => role.$1 != 'MAGE'))
+        {
+          'hero_code': role.$1,
+          'role_name': role.$2,
+          'hero_recruited': false,
+          'layer': 0,
+          'unlocked_nodes': 0,
+          'total_nodes': 8,
+          'small_unlocked': 0,
+          'medium_unlocked': 0,
+          'gold_spent': 0,
+          'total_gold_cost': 33750,
+          'branch_complete': false,
+          'ready_to_recruit': false,
+          'next_node': {
+            'node_code': 'L0_${role.$1}_S01',
+            'node_size': 'SMALL',
+            'sequence': 1,
+            'gold_cost': 1500,
+            'title': '기초 단련 1',
+            'effect_label': '이번 회차 파티 전투력 +2%',
+          },
+          'recruit_node_code': 'L0_RECRUIT_${role.$1}',
+        },
+    ],
+    'heroes': [
+      for (final role in roles)
+        {
+          'hero_code': role.$1,
+          'role_name': role.$2,
+          'recruited': role.$1 == 'MAGE',
+          'advancement_tier': 0,
+          'appearance_code': 'BASE',
+          'active_skill_slots': 0,
+        },
+    ],
+    'node_counts': {'SMALL': 0, 'MEDIUM': 0, 'LARGE': 0},
+  };
 }

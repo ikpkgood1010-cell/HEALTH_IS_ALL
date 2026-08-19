@@ -1,0 +1,1020 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-18T12:33:41.774508+00:00",
+  "purpose": "Durable project vault of explicitly approved art assets and approved UI references.",
+  "art_direction": "Original 32-bit soft chunky pixel art. No copied game assets or logos.",
+  "portrait_status": {
+    "directly_vaulted_count": 84,
+    "coverage": "Complete: 6 jobs × 2 genders × tiers 0-6 = 84 official portrait assets.",
+    "canonical_rule": "T0-T3 come from the approved source archives; T4-T6 come from the individually approved replacement exports. The six named Warrior T0-T2 exports are retained as the canonical newer copies."
+  },
+  "approved_assets": [
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t0.png",
+      "source_path": "approved archive staging: t0_07.png",
+      "bytes": 595646,
+      "sha256": "662d3442f4b33bd8f5569019ac7ad182218034ac48a21bc167002489a974bde8",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t1.png",
+      "source_path": "approved archive staging: t1t3_16.png",
+      "bytes": 490871,
+      "sha256": "4992d60cb8fecdc2502c2e77a8b3d7721b8f943c4757baa5efcb2fbe217b3f0c",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t2.png",
+      "source_path": "approved archive staging: t1t3_11.png",
+      "bytes": 932465,
+      "sha256": "6fb98cfa120fd2741c5d6d71bc57f0951bc47dd411a2f92a1a949808567533ed",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t3.png",
+      "source_path": "approved archive staging: t1t3_30.png",
+      "bytes": 856247,
+      "sha256": "4b8ce37bc7fdafa72c6f16254a95419d794d7a747b7502fc43b4bdd08c927c1b",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0130_1200x896.png",
+      "bytes": 793008,
+      "sha256": "6c439be868e5e23a4ffe9fe8b6e511969a9f87b1e05a35c0ba28edcddf43674d",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0132_1200x896.png",
+      "bytes": 873005,
+      "sha256": "9c0b98a0ebc27889a907b1c1fb80bcefa7d0fb2a078f4c246fbbbbfed5eeb146",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0134_1200x896.png",
+      "bytes": 908517,
+      "sha256": "36f1f50eb6cc84502b2d7521944f46e5c1097a795f04548cb06997afc040e66f",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t0.png",
+      "source_path": "approved archive staging: t0_04.png",
+      "bytes": 566282,
+      "sha256": "ed135aa66f8848aa4c51d4f08db78488e79f7b4f15b87849aae1063cf1712385",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t1.png",
+      "source_path": "approved archive staging: t1t3_12.png",
+      "bytes": 499752,
+      "sha256": "8acf6a9670444365b316b92b16cd054923fda5056fb0e784bd578c771df67125",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t2.png",
+      "source_path": "approved archive staging: t1t3_15.png",
+      "bytes": 947303,
+      "sha256": "ec244e90af54495439b4339a924c5fbf0c0571b25f7771c0579b7cc26f7daee7",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t3.png",
+      "source_path": "approved archive staging: t1t3_36.png",
+      "bytes": 884418,
+      "sha256": "7653dad91e6ebed5f22423c1150be7c80e97f99dd239d3a4751850c82c355657",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0129_1200x896.png",
+      "bytes": 866511,
+      "sha256": "8e4beef6e1f392cb58090f6835ce80bde738c6a492bd12c94e594cbc265aca97",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0131_1200x896.png",
+      "bytes": 881331,
+      "sha256": "40b76be12a4ab251209a023e8ab8d6b47ebecbce582f7ed30616a99cfa0d8852",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/archer_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0133_1200x896.png",
+      "bytes": 865581,
+      "sha256": "aabbb1f5772783693d38f22c79f20a043fc130ec3b33f3b3549ddb7ea142b3d0",
+      "kind": "official_hero_portrait",
+      "role": "archer",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t0.png",
+      "source_path": "approved archive staging: t0_12.png",
+      "bytes": 625603,
+      "sha256": "b9cf79dbbe3ce25626e5c8ed969c45b007dcda2afd4d094ab1a509548b3e177b",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t1.png",
+      "source_path": "approved archive staging: t1t3_21.png",
+      "bytes": 656147,
+      "sha256": "4a69de5a0323242d4c9eb783a4b3776e7417d184393f4b6f531a2bdf028ac9a3",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t2.png",
+      "source_path": "approved archive staging: t1t3_22.png",
+      "bytes": 1173625,
+      "sha256": "ed49bab3032d2db6280180c1b36f6cd5aaeaa57799c818b3df307f7c0738f7d5",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t3.png",
+      "source_path": "approved archive staging: t1t3_32.png",
+      "bytes": 1093244,
+      "sha256": "071bd59d2fb1658da1c3af1fab43f7fad28b59fa97d21e5a75486d5f37421e3d",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0158.png",
+      "bytes": 1280382,
+      "sha256": "01cb91b761e57761cb4879e01fc3a3ce07246321d0601310f9710d9f03913ba7",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0160.png",
+      "bytes": 1741764,
+      "sha256": "1c2e3be81687398541f190a8dc2ba2b3df012cea775ababeb3b21889e47965cb",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0162.png",
+      "bytes": 3671078,
+      "sha256": "89009beb7f7a4c5b5492c0281a89335b71b8e30a1cb7beeb8247dd9e40d61fc8",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t0.png",
+      "source_path": "approved archive staging: t0_09.png",
+      "bytes": 627392,
+      "sha256": "b10fbbd4dc26ca00f81dd0c51e79642c26978a0ad9b1939685df69fd34f9cc70",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t1.png",
+      "source_path": "approved archive staging: t1t3_19.png",
+      "bytes": 495772,
+      "sha256": "f6337cb977168f5eeb920e56ac0508f4a345356edcdba84fce25e1a30256e34c",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t2.png",
+      "source_path": "approved archive staging: t1t3_25.png",
+      "bytes": 1102931,
+      "sha256": "cdef4762e94e48d8694652f08b60a4e8f666113e361e4f3fc32fee3f26ca980f",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t3.png",
+      "source_path": "approved archive staging: t1t3_24.png",
+      "bytes": 1035426,
+      "sha256": "74796cf092cfd1d8fc45c793096127059b909d0de542bfb704dbac693005fae5",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0157.png",
+      "bytes": 1060564,
+      "sha256": "910c1bab511f94315b3325e0b203515cd82df4a15e79a50220ffc04ef7b6b823",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0159.png",
+      "bytes": 1647220,
+      "sha256": "4a62212de06d17317a0985774526fd9f2c25e5f2aca2030487b97182d2a1007e",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/healer_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0161.png",
+      "bytes": 1964978,
+      "sha256": "b4880e3d3643c403ec6411d1a6bda1de3f9e6181937f028b4b6d51ba019b0a0e",
+      "kind": "official_hero_portrait",
+      "role": "healer",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t0.png",
+      "source_path": "approved archive staging: t0_10.png",
+      "bytes": 606940,
+      "sha256": "f43a2abcccb9f679f1c662b775dfe979cf584430d1d539404522a8324e4f61d5",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t1.png",
+      "source_path": "approved archive staging: t1t3_10.png",
+      "bytes": 464739,
+      "sha256": "507e6fe9bd7387aad0b5d1290b96351a24eeec8ee47224ed83dc69a49eb3fc53",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t2.png",
+      "source_path": "approved archive staging: t1t3_13.png",
+      "bytes": 877141,
+      "sha256": "aa9fe6c81e9e593efd0c3cd8e7fd2e0424ea36fd73b0d283b6613722fe554e2a",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t3.png",
+      "source_path": "approved archive staging: t1t3_31.png",
+      "bytes": 785130,
+      "sha256": "ca7f617e8eb84fdd86106d590e5ab52851d12f47728ceb09a44fdc22a58c5f2e",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0116_mage-female_t4_elite-archmage_1200x896.png",
+      "bytes": 1352884,
+      "sha256": "ba4d893120f9bb5e640b49bf2934dd1e60e994b798d85d66755987e7871b1c3c",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0118.png",
+      "bytes": 3702758,
+      "sha256": "5d6504418ec745d4265c92bd0c046d078a7959fd679b1d9d21873067fc68d850",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0120.png",
+      "bytes": 921606,
+      "sha256": "a58a23dd11983666cdca773d2b96abb9a03914a6dd59a086477baa12d17d4400",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t0.png",
+      "source_path": "approved archive staging: t0_06.png",
+      "bytes": 596330,
+      "sha256": "afc953c87cf9a3d1817b74617944f63435643e03622e45fb8183cb196b9920a1",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t1.png",
+      "source_path": "approved archive staging: t1t3_05.png",
+      "bytes": 609806,
+      "sha256": "c2ce8fba6164284dc8c76294b5ca6ca0356a2b39963ff141dec854606e70082e",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t2.png",
+      "source_path": "approved archive staging: t1t3_14.png",
+      "bytes": 919425,
+      "sha256": "8928265b06cc9db21feefaa674014faad6ac2f1491d25a4dcd7a5bc91c4553c3",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t3.png",
+      "source_path": "approved archive staging: t1t3_27.png",
+      "bytes": 743668,
+      "sha256": "2f2b8b6ed9b2f3aaf978a73983b814f41fdd978f32c839ed2332c396ddee9984",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0115_mage-male_t4_elite-archmage_1200x896.png",
+      "bytes": 1643220,
+      "sha256": "7555b82c8c6138aec909cb19639cb05fc5217e07a7326541b0048d482bc45e7f",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0117.png",
+      "bytes": 4186726,
+      "sha256": "c4a01e6c3622bb34310af62cebf5d7f1fde3570c6e3d0189ea7b9282e9e9dc5a",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/mage_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0119.png",
+      "bytes": 1270650,
+      "sha256": "419f47930443704b6b70cd0aefbffe49e1428b0fba755933c5ab3ca1d92e4d1d",
+      "kind": "official_hero_portrait",
+      "role": "mage",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t0.png",
+      "source_path": "approved archive staging: t0_11.png",
+      "bytes": 614909,
+      "sha256": "78e9eb533169bf2e562e72fc7ce16e784320119ffd48064d035a00790dd6c3b9",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t1.png",
+      "source_path": "approved archive staging: t1t3_28.png",
+      "bytes": 441378,
+      "sha256": "f1e8e44d4827c7e609911ee704effd0cf900a9c36782b5f4c11e7d075492847f",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t2.png",
+      "source_path": "approved archive staging: t1t3_20.png",
+      "bytes": 861557,
+      "sha256": "6321b74dd8024afe40084388d3a90ce2eb1e7326fd39f5105476bdb9d0c29a0d",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t3.png",
+      "source_path": "approved archive staging: t1t3_34.png",
+      "bytes": 792028,
+      "sha256": "b23e0cae65bf5988addfcc5b9dd28894bc04df891b34a7b9b54c9940fb7860ba",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0144.png",
+      "bytes": 2707023,
+      "sha256": "cabbd1764b3991a7436926aaa6a11996d8636d9899fe568729dad869d2ccea76",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0146.png",
+      "bytes": 3457041,
+      "sha256": "b7fd6f6e7431e4145a0bcf7aab32312e7e1d75ed2bddd71440df8ff8485d158b",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0148.png",
+      "bytes": 3396240,
+      "sha256": "de877ded027381a47cfb5e8673de8d5b9ce8ea3de067b52237f283e43ec7a5ed",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t0.png",
+      "source_path": "approved archive staging: t0_08.png",
+      "bytes": 519809,
+      "sha256": "4c8fbe7ab0c8c6b999156161f0e9b59def321d88456874a0e85e52828ab80b3a",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t1.png",
+      "source_path": "approved archive staging: t1t3_18.png",
+      "bytes": 532839,
+      "sha256": "c5cd5f501fbe5c9824fbe7511cc2bb260253941ea94868e7ece70e9d5521de64",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t2.png",
+      "source_path": "approved archive staging: t1t3_17.png",
+      "bytes": 963210,
+      "sha256": "12b0559ce0f9435f48770e3caba2940a57f61e241df9dbc09d22b3dc57c10a5f",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t3.png",
+      "source_path": "approved archive staging: t1t3_23.png",
+      "bytes": 951589,
+      "sha256": "b175fb85b4144bf623b5ab9d78eff0332d71f31fe618e4804ccdfdcd4ccc322d",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0143.png",
+      "bytes": 3554006,
+      "sha256": "a07c2660eff4a90ff0216a8279e049bdeb9b9ea943e0200109fd62b3e683523d",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0145.png",
+      "bytes": 3985657,
+      "sha256": "50a33668625fd72cc5aace3952f51d2dc28ff1e47ffe627004a2d998cc1aea71",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/rogue_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0147.png",
+      "bytes": 3990118,
+      "sha256": "dca95514a0b19a9fc4ea7aebf46521130057f9ad155f7515466f91ff03d11f6c",
+      "kind": "official_hero_portrait",
+      "role": "rogue",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t0.png",
+      "source_path": "approved archive staging: t0_03.png",
+      "bytes": 660824,
+      "sha256": "1dd1f6eaa3ea5774f7cc97a72b4848e430aefda49a5080234dea02004b54d19c",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t1.png",
+      "source_path": "approved archive staging: t1t3_03.png",
+      "bytes": 577455,
+      "sha256": "afbbc3c5d957b98b06b3cd4cc84a0d1dd351edf117bfaced852fbe771c8c28c0",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t2.png",
+      "source_path": "approved archive staging: t1t3_06.png",
+      "bytes": 1022464,
+      "sha256": "08d860842da492f002b9c049ce70f1e661948cba8b1757c5c029962db99fc1cc",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t3.png",
+      "source_path": "approved archive staging: t1t3_29.png",
+      "bytes": 928027,
+      "sha256": "fa7b5b76d6f899306ee2c9071c45b8e6f2976ccb5eef4cd23400878530562c24",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0088_tanker-female_t4_fortress-knight_1200x896.png",
+      "bytes": 1451155,
+      "sha256": "b73eb18bc9d26c9c60562997dcc7586944c2b4bd3fbf66b56c03dac3f5f31e44",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0090_tanker-female_t5_heroic-commander_1200x896.png",
+      "bytes": 1539067,
+      "sha256": "8c1a47ac7cffc16e4e341e9af70f83f558b55c3bfe804a519a17d9ad056c7fee",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0092_tanker-female_t6_legendary-sovereign_1200x896.png",
+      "bytes": 1787334,
+      "sha256": "f92ff07eafe87d8df27fd6971e77de532e6e8f6ab9de2470f8f38fc343a3ff84",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t0.png",
+      "source_path": "approved archive staging: t0_01.png",
+      "bytes": 609167,
+      "sha256": "5de7e42c92178699516bbcd7ee054c311777c30d863749862a161207ca4ca1b2",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t1.png",
+      "source_path": "approved archive staging: t1t3_02.png",
+      "bytes": 540272,
+      "sha256": "984f16110a5e173766be32559a46c0a0f18fb57f707ebdf82cd2287b91a6f84f",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t2.png",
+      "source_path": "approved archive staging: t1t3_08.png",
+      "bytes": 1017370,
+      "sha256": "ce418af1d5d0ee711949ce1bc996655bde344975eb7d830c1d5fcfc66c88518f",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t3.png",
+      "source_path": "approved archive staging: t1t3_26.png",
+      "bytes": 929896,
+      "sha256": "2e4aca38c78bc1600d551839ea33847d1c8b926b2475c76c0d9ff82cc2ae49e4",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0087_tanker-male_t4_fortress-knight_1200x896.png",
+      "bytes": 1629820,
+      "sha256": "260e0c41bfe02a08f1a89a09d22c06aaca6465bfef76c8e641998a296ce0b9f9",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0089_tanker-male_t5_heroic-commander_1200x896.png",
+      "bytes": 1838550,
+      "sha256": "340bb5110173506d3112e3a7aad2ed521f3f989e5207d0497950b95b209f96bf",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/tanker_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0091_tanker-male_t6_legendary-sovereign_1200x896.png",
+      "bytes": 1898694,
+      "sha256": "547a73eeb25fa9c249fe4374f8fd1ea9226f1fa0dd4b2723ecc4945b7a0bc4c3",
+      "kind": "official_hero_portrait",
+      "role": "tanker",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t0.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0094_warrior-female_t0_novice_1200x896.png",
+      "bytes": 1166635,
+      "sha256": "f447ba6414773d3899a289123cae6ec7cf019e2b6bd9b9c7d7e42f7205dd8a44",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t1.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0096_warrior-female_t1_first-advancement_1200x896.png",
+      "bytes": 1222098,
+      "sha256": "21cae1a97efeac3b2a4a154def8063002dfa56723a42093ba6821bc04b88fc85",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t2.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0098_warrior-female_t2_skilled-apprentice_1200x896.png",
+      "bytes": 1273590,
+      "sha256": "696cb4cafad7a8a1e8684f716900ccae294190882195dabbc0cf65964a05ec51",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t3.png",
+      "source_path": "approved archive staging: t1t3_33.png",
+      "bytes": 1019193,
+      "sha256": "10c9da2eb770846d89f6ade7f306bf1da5e92c58443d241ae078d43a11d756c1",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0102_warrior-female_t4_elite-duel-knight_1200x896.png",
+      "bytes": 1298588,
+      "sha256": "15dc27d6ee30d1e730ee1c7ba626d111e7b925cab8f4d79372b2a0d42ac8aa3c",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0104_warrior-female_t5_battlefield-commander_1200x896.png",
+      "bytes": 1329975,
+      "sha256": "9e6daabcde02bcd1fc38cb39ef9bed55eeb2b1b6e32302fc49e65d06dc251c7f",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_female_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0106_warrior-female_t6_legendary-greatsword-sovereign_1200x896.png",
+      "bytes": 1382959,
+      "sha256": "bc2505e4ae76dd244bf16d93de565231b9f12f32c7837f4ad84a7d8ab5afe426",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "female",
+      "tier": 6,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t0.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0093_warrior-male_t0_novice_1200x896.png",
+      "bytes": 1093049,
+      "sha256": "0f05be9f5817468322d677c0db9b24e5648ebe09de42d18d822db813d0fe13e5",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 0,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t1.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0095_warrior-male_t1_first-advancement_1200x896.png",
+      "bytes": 1245157,
+      "sha256": "60b6b416cd983eec9737b588e488f1b9652fcea770a33dc60d6daefca0208c2a",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 1,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t2.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0097_warrior-male_t2_skilled-apprentice_1200x896.png",
+      "bytes": 1258055,
+      "sha256": "b9d87e0ff3497cacf2ba76707ce69e010ed5f70d25bc0d1bff2e64c4bb393abe",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 2,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t3.png",
+      "source_path": "approved archive staging: t1t3_35.png",
+      "bytes": 990586,
+      "sha256": "5cd9f48750b55f9858b7f19e48cc6b8d7dc656f216289276509936995baffbcf",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 3,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t4.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0101_warrior-male_t4_elite-duel-knight_1200x896.png",
+      "bytes": 1372081,
+      "sha256": "eb553daf26dbc0fd96fad17978ca8b6627fedd766ace67bfbf46bf04f04266b0",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 4,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t5.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0103_warrior-male_t5_battlefield-commander_1200x896.png",
+      "bytes": 1512726,
+      "sha256": "8b8dc7c4b40a4928e18fbb1440a75349693407814b309090a5bdbd3f2994f0c1",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 5,
+      "approval": "approved"
+    },
+    {
+      "vault_path": "assets/approved/hero-portraits/2026-08-18/warrior_male_t6.png",
+      "source_path": "C:\\Users\\최영준\\Downloads\\260818 코덱스 4~6차 승인 용사이미지\\A0105_warrior-male_t6_legendary-greatsword-sovereign_1200x896.png",
+      "bytes": 1577921,
+      "sha256": "50feed327eda0ffa0c9a50718153fa42daaa64e44038e78e25fef23877164fc3",
+      "kind": "official_hero_portrait",
+      "role": "warrior",
+      "gender": "male",
+      "tier": 6,
+      "approval": "approved"
+    }
+  ],
+  "approved_references": [
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트1 A0001~0019.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트1 A0001~0019.zip",
+      "bytes": 40467998,
+      "sha256": "abf070c708685e7009ed183f23916580b3f50f01a1d82fa9c35eea5ab9374623"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트1 A0020_A0039_투명png.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트1 A0020_A0039_투명png.zip",
+      "bytes": 41401990,
+      "sha256": "0904490f2f17098f4058d20be719107ab105e5a34219aca2d2bf10be5669ce97"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트1 A0040~A0055_투명PNG.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트1 A0040~A0055_투명PNG.zip",
+      "bytes": 53051903,
+      "sha256": "40144794459d8a4c7e38af2f2000368501e3dd57e540120b83bef43e4f7d0168"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트1 A0056~0066.ZIP",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트1 A0056~0066.ZIP",
+      "bytes": 4415928,
+      "sha256": "6c876557099eb5565ff851f0dfa851626a88b32b4c61032b0ab0bcf4d4aaad79"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/PART2 게임 UI 시안(67~78).zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\PART2 게임 UI 시안(67~78).zip",
+      "bytes": 11941443,
+      "sha256": "bee60ea9e1dba0cb31b78809efed5e5f451185842ff180ef081539c6eee6746a"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트2,3 용사0차 .zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트2,3 용사0차 .zip",
+      "bytes": 7158884,
+      "sha256": "6f963c1ce5b8dde488be59fddcde70e952891d32bff7f6c3d752e6490869ffcf"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트2,3 용사1~3차 .zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트2,3 용사1~3차 .zip",
+      "bytes": 29054452,
+      "sha256": "46ac11ddc886800ccfd67066a966b0d87315e3bfbc1c5778573d8205e48ffc66"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트6 A0365~0396.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트6 A0365~0396.zip",
+      "bytes": 886669,
+      "sha256": "f37c93f09630db805784816574c66018dd25dd34da8cbb884daa5ef5ec4e2e2b"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트6 아이콘.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트6 아이콘.zip",
+      "bytes": 4655341,
+      "sha256": "ca1cb29df6dbd50a71b749c95733418b70ae75f0cd300a43bd7ef495c98372a0"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트9 A529~538 배지,레벨업,푸시알림,퍼미션,프레임시트,사운드비주얼큐,.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트9 A529~538 배지,레벨업,푸시알림,퍼미션,프레임시트,사운드비주얼큐,.zip",
+      "bytes": 3529168,
+      "sha256": "55e5c1d3357aaab0b37d852f04d7ed51c8bbd65c1cbdedec6ef265f8c93dc6fc"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/archives/파트9 559~576+설명.zip",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트9 559~576+설명.zip",
+      "bytes": 38064240,
+      "sha256": "f7a37abf1c49f86c676076c900fd28693632c74e2ece728a0aca2bbb3a778001"
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/directories/파트8 시스템피드백, 토스트, 온보딩, 에러,오프라인,권한",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트8 시스템피드백, 토스트, 온보딩, 에러,오프라인,권한",
+      "kind": "approved_system_ui_reference_directory",
+      "files": 49,
+      "bytes": 1620099
+    },
+    {
+      "vault_path": "assets/source/2026-08-18/approved-references/directories/파트8 빈상태, 성공달성이벤트",
+      "source_path": "C:\\Users\\최영준\\Downloads\\파트8 빈상태, 성공달성이벤트",
+      "kind": "approved_system_ui_reference_directory",
+      "files": 30,
+      "bytes": 1178408
+    }
+  ],
+  "not_in_this_vault": "Unreviewed or candidate-only monster, combat effect, building, and non-approved icon packs remain intentionally outside this approved vault."
+}

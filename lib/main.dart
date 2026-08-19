@@ -31,12 +31,12 @@ Future<void> main() async {
 }
 
 class HealthIsAllApp extends StatelessWidget {
-  const HealthIsAllApp({Key? key}) : super(key: key);
+  const HealthIsAllApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HEALTH IS ALL',
+      title: 'HEALTH IS ALL : 건강이 전부다 !!',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const MainNavigationScreen(),

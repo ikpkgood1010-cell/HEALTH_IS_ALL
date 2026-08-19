@@ -36,3 +36,9 @@ def test_compare_reports_drift_for_nullable_and_extra_column():
 
 def test_catalog_queries_are_select_only():
     assert all(query.lstrip().lower().startswith("select") for query in schema_preflight.SCHEMA_QUERIES)
+
+
+def test_foreign_key_query_preserves_composite_column_positions():
+    foreign_key_query = schema_preflight.SCHEMA_QUERIES[-1].lower()
+    assert "position_in_unique_constraint" in foreign_key_query
+    assert "ordinal_position" in foreign_key_query

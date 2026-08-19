@@ -27,6 +27,44 @@ class HealthRecordResponse(BaseModel):
     current_daily_exp: int
     message: str
     duplicate: bool = False
+    health_essence_earned: int = 0
+
+
+class HealthTextAnalysisRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    record_type: Literal["meal_log", "workout_log"]
+    text: str = Field(..., min_length=1, max_length=4000)
+    meal_type: Optional[Literal["아침", "점심", "저녁", "간식"]] = None
+    answers: Dict[str, float] = Field(default_factory=dict)
+
+
+class HealthTextAnalysisResponse(BaseModel):
+    record_type: Literal["meal_log", "workout_log"]
+    status: Literal["READY", "NEEDS_CONFIRMATION"]
+    summary: str
+    estimated: Dict[str, Any]
+    confirmation_cards: List[Dict[str, Any]]
+    reward_preview: Dict[str, Any]
+    storage_detail: Dict[str, Any]
+    value: float
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+    blocks: List[Dict[str, Any]] = Field(default_factory=list)
+    sources: List[str] = Field(default_factory=list)
+
+
+class DailyHealthReviewResponse(BaseModel):
+    meal_count: int
+    workout_count: int
+    nutrition: Dict[str, float]
+    nutrition_low: Dict[str, float]
+    nutrition_high: Dict[str, float]
+    meal_score: Optional[float]
+    workout_minutes: float
+    exp_earned: int
+    health_essence_earned: int
+    meals: List[Dict[str, Any]]
+    workouts: List[Dict[str, Any]]
+    disclaimer: str
 
 
 class HealthIStateResponse(BaseModel):
@@ -62,6 +100,175 @@ class GameOverviewResponse(BaseModel):
     offline_cap_hours: int
     prestige_min_floor: int
     prestige_cooldown_days: int
+
+
+class GameDirectionResponse(BaseModel):
+    """Read-only canonical contract for the new idle game foundation."""
+
+    official_name: str
+    status: Literal["FOUNDATION"] = "FOUNDATION"
+    health_tabs: List[str]
+    game_entry: str
+    party_roles: List[str]
+    full_auto_battle: bool
+    normal_rooms_per_floor: int
+    boss_rooms_per_floor: int
+    constellation_layers: int
+    large_nodes_per_layer: int
+    deterministic_spirit_hatching: bool
+    random_gacha: bool
+    equipment_inventory: bool
+    rebirth_resets: List[str]
+    rebirth_retains: List[str]
+
+
+class GameInitializeRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+
+
+class InitialHeroSelectionRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    hero_code: Literal["TANKER", "WARRIOR", "MAGE", "ARCHER", "ROGUE", "HEALER"]
+    expected_revision: int = Field(..., ge=0)
+
+
+class GameHeroStateResponse(BaseModel):
+    hero_code: str
+    role_name: str
+    recruited: bool
+    advancement_tier: int
+    appearance_code: str
+    active_skill_slots: int
+
+
+class ConstellationNodeStateResponse(BaseModel):
+    node_code: str
+    layer: int
+    hero_code: str
+    role_name: str
+    node_kind: Literal["RECRUIT", "ADVANCEMENT"]
+    state: Literal["UNLOCKED", "NEXT", "LOCKED"]
+    advancement_tier: int
+    advancement_name: Optional[str] = None
+    health_essence_cost: int = 0
+    star_shard_cost: int = 0
+    can_afford: bool = False
+    effect_label: Optional[str] = None
+
+
+class ConstellationLayerStateResponse(BaseModel):
+    layer: int
+    title: str
+    node_count: int
+    nodes: List[ConstellationNodeStateResponse]
+
+
+class IdleBattleStateResponse(BaseModel):
+    status: Literal["WAITING_FOR_HERO", "RUNNING"]
+    server_anchor_at: Optional[str]
+    offline_cap_seconds: int
+    party_power: int
+    run_power_multiplier: float
+    current_room_kind: Literal["NORMAL", "BOSS"]
+    room_progress_seconds: int
+    room_required_seconds: int
+
+
+class RunNodeCandidateResponse(BaseModel):
+    node_code: str
+    node_size: Literal["SMALL", "MEDIUM"]
+    sequence: int
+    gold_cost: int
+    title: str
+    effect_label: str
+
+
+class RecruitmentBranchResponse(BaseModel):
+    hero_code: str
+    role_name: str
+    hero_recruited: bool
+    layer: Literal[0]
+    unlocked_nodes: int
+    total_nodes: int
+    small_unlocked: int
+    medium_unlocked: int
+    gold_spent: int
+    total_gold_cost: int
+    branch_complete: bool
+    ready_to_recruit: bool
+    next_node: Optional[RunNodeCandidateResponse]
+    recruit_node_code: str
+
+
+class CanonicalGameStateResponse(BaseModel):
+    initialized: bool
+    phase: Literal["ONBOARDING", "IDLE_BATTLE"]
+    user_id: str
+    revision: int
+    run_number: int
+    tower_floor: int
+    highest_floor: int
+    room_position: int
+    rooms_per_floor: int
+    gold: int
+    battle: IdleBattleStateResponse
+    health_essence: int
+    star_shards: int
+    transcendence_points: int
+    initial_hero_selected: bool
+    starter_hero_code: Optional[str]
+    large_node_slots_by_layer: Dict[str, int]
+    constellation_layers: List[ConstellationLayerStateResponse]
+    recruitment_branches: List[RecruitmentBranchResponse]
+    heroes: List[GameHeroStateResponse]
+    node_counts: Dict[str, int]
+
+
+class IdleBattleSettleRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    idempotency_key: UUID4
+
+
+class IdleBattleSettleResponse(BaseModel):
+    settlement_id: str
+    already_settled: bool
+    elapsed_seconds: int
+    credited_seconds: int
+    capped: bool
+    rooms_cleared: int
+    bosses_cleared: int
+    gold_earned: int
+    state: CanonicalGameStateResponse
+
+
+class ConstellationUnlockRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    node_code: str = Field(..., min_length=1, max_length=80)
+    expected_revision: int = Field(..., ge=0)
+
+
+class RebirthPreviewResponse(BaseModel):
+    user_id: str
+    revision: int
+    can_rebirth: bool
+    next_run_number: int
+    minimum_floor: int
+    star_shards_to_earn: int
+    reset: Dict[str, int]
+    retain: Dict[str, Any]
+
+
+class RebirthExecuteRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=36)
+    expected_revision: int = Field(..., ge=0)
+    idempotency_key: UUID4
+    confirm: Literal[True]
+
+
+class RebirthExecuteResponse(BaseModel):
+    rebirth_id: str
+    already_executed: bool
+    state: CanonicalGameStateResponse
 
 
 class AdventureSettleRequest(BaseModel):

@@ -1,4 +1,6 @@
-# 자동 모험·훈련장 MVP 구현 기준
+> **SUPERSEDED:** 새 게임 방향에서는 사용하지 않는다. 현재 기준은 `GAME_DIRECTION_V2_CANONICAL.md`다.
+
+# 자동 모험·훈련장 MVP 구현 기준 (레거시 기록)
 
 ## 구현 목적
 
